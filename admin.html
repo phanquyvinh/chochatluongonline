@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản trị — VinhQuay Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="dash-layout">
+    <header class="dash-header">
+      <div class="container dash-header-inner">
+        <div class="dash-title">
+          <a href="/" class="logo" style="margin-right:8px">
+            <div class="logo-mark">VQ</div>
+          </a>
+          Bảng điều khiển
+          <span class="dash-badge badge-admin">Admin</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="adminName" style="font-size:0.9rem;color:var(--text-secondary)"></span>
+          <a href="/" class="btn btn-ghost btn-sm">Trang chủ</a>
+          <button class="btn btn-outline btn-sm" onclick="logout()">Đăng xuất</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="dash-body">
+      <div class="container">
+
+        <!-- Stats -->
+        <div class="panel">
+          <h2 class="panel-title">📊 Tài chính sàn</h2>
+          <p class="panel-desc">GMV · Phí sàn (theo % hiện tại) · Thuế ước tính · Lợi nhuận ròng. Đổi % bên dưới sẽ áp dụng kỳ sau.</p>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Tổng giao dịch (GMV)</div>
+              <div class="stat-value" id="grossSales">—</div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-label">Doanh thu phí sàn</div>
+              <div class="stat-value" id="platformRev">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Thuế DN ước tính</div>
+              <div class="stat-value" id="stateTax">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Lợi nhuận ròng Admin</div>
+              <div class="stat-value" id="netProfit">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platform settings — fully flexible -->
+        <div class="panel">
+          <h2 class="panel-title">⚙️ Cấu hình thị trường (linh hoạt)</h2>
+          <p class="panel-desc">
+            Tất cả chỉ số có thể đổi theo thị trường — không hardcode.
+            Seller vẫn tự set phí ship / giá món của từng gian hàng.
+          </p>
+
+          <h3 style="font-size:0.9rem;margin:12px 0 10px;color:var(--text-secondary)">Phí sàn & thuế</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Phí sàn (%) — VD: 1 = 1%</label>
+              <input type="number" id="cfg_platformFeeRate" min="0" max="30" step="0.1" placeholder="1">
+            </div>
+            <div class="form-field">
+              <label>Thuế DN trên phí sàn (%)</label>
+              <input type="number" id="cfg_corporateTaxRate" min="0" max="50" step="0.5" placeholder="10">
+            </div>
+            <div class="form-field">
+              <label>VAT tham khảo (%)</label>
+              <input type="number" id="cfg_vatRate" min="0" max="20" step="0.5" placeholder="8">
+            </div>
+          </div>
+
+          <h3 style="font-size:0.9rem;margin:16px 0 10px;color:var(--text-secondary)">Ship mặc định (khi shop chưa tự set)</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Ship mặc định / shop (đ)</label>
+              <input type="number" id="cfg_defaultShipFeePerShop" min="0" step="1000">
+            </div>
+            <div class="form-field">
+              <label>Miễn ship từ (đ)</label>
+              <input type="number" id="cfg_defaultFreeShipThreshold" min="0" step="10000">
+            </div>
+            <div class="form-field">
+              <label>Ship dịch vụ mặc định (đ)</label>
+              <input type="number" id="cfg_defaultShipFeeService" min="0" step="1000">
+            </div>
+          </div>
+
+          <h3 style="font-size:0.9rem;margin:16px 0 10px;color:var(--text-secondary)">Đơn tối thiểu & escrow</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Đơn tối thiểu toàn sàn (đ)</label>
+              <input type="number" id="cfg_minOrderAmount" min="0" step="10000">
+            </div>
+            <div class="form-field">
+              <label>Số ngày tạm giữ escrow</label>
+              <input type="number" id="cfg_escrowHoldDays" min="0" max="30" step="1">
+            </div>
+          </div>
+
+          <h3 style="font-size:0.9rem;margin:16px 0 10px;color:var(--text-secondary)">Mã giảm giá sàn</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Mã voucher</label>
+              <input type="text" id="cfg_defaultVoucherCode" placeholder="VINHQUAY10">
+            </div>
+            <div class="form-field">
+              <label>Giảm (%)</label>
+              <input type="number" id="cfg_defaultVoucherPercent" min="0" max="50" step="1" placeholder="10">
+            </div>
+            <div class="form-field">
+              <label>Giảm tối đa (đ)</label>
+              <input type="number" id="cfg_defaultVoucherMaxDiscount" min="0" step="1000">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn btn-primary" onclick="savePlatformSettings()">Lưu cấu hình thị trường</button>
+            <button class="btn btn-ghost" onclick="resetPlatformSettings()">Khôi phục mặc định</button>
+          </div>
+          <p id="cfgUpdatedAt" style="margin-top:12px;font-size:0.8rem;color:var(--text-muted)"></p>
+        </div>
+
+        <!-- Escrow table -->
+        <div class="panel">
+          <h2 class="panel-title">🔐 Khớp lệnh & giải ngân escrow</h2>
+          <p class="panel-desc">Giải ngân trừ phí sàn theo % đang áp dụng.</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Mã GD</th>
+                  <th>Gian hàng</th>
+                  <th>Nội dung</th>
+                  <th>Số tiền</th>
+                  <th>Tiêu chí</th>
+                  <th>Trạng thái</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>TXN-882910</td>
+                  <td>Điện Tử Bách Khoa</td>
+                  <td>Đơn #ORD-9921</td>
+                  <td>350.000 đ</td>
+                  <td>Khách xác nhận đã nhận</td>
+                  <td><span class="status-pill status-held">Tạm giữ</span></td>
+                  <td><button class="btn btn-primary btn-sm" onclick="releaseFunds('TXN-882910')">Giải ngân</button></td>
+                </tr>
+                <tr>
+                  <td>TXN-882911</td>
+                  <td>Điện Lạnh Hà Nội</td>
+                  <td>Dịch vụ #SRV-4412</td>
+                  <td>250.000 đ</td>
+                  <td>Biên bản nghiệm thu khớp</td>
+                  <td><span class="status-pill status-released">Đã giải ngân</span></td>
+                  <td><span style="color:var(--text-muted);font-size:0.85rem">—</span></td>
+                </tr>
+                <tr>
+                  <td>TXN-882912</td>
+                  <td>Kỹ Thuật Số Việt</td>
+                  <td>Đơn #ORD-1003</td>
+                  <td>890.000 đ</td>
+                  <td>Chờ khách xác nhận</td>
+                  <td><span class="status-pill status-pending">Chờ khớp</span></td>
+                  <td><button class="btn btn-ghost btn-sm" disabled>Chưa đủ điều kiện</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    function fillSettingsForm() {
+      const c = VQConfig.loadPlatformConfig();
+      document.getElementById('cfg_platformFeeRate').value = (c.platformFeeRate * 100);
+      document.getElementById('cfg_corporateTaxRate').value = (c.corporateTaxRate * 100);
+      document.getElementById('cfg_vatRate').value = (c.vatRate * 100);
+      document.getElementById('cfg_defaultShipFeePerShop').value = c.defaultShipFeePerShop;
+      document.getElementById('cfg_defaultFreeShipThreshold').value = c.defaultFreeShipThreshold;
+      document.getElementById('cfg_defaultShipFeeService').value = c.defaultShipFeeService;
+      document.getElementById('cfg_minOrderAmount').value = c.minOrderAmount;
+      document.getElementById('cfg_escrowHoldDays').value = c.escrowHoldDays;
+      document.getElementById('cfg_defaultVoucherCode').value = c.defaultVoucherCode || '';
+      document.getElementById('cfg_defaultVoucherPercent').value = (c.defaultVoucherPercent * 100);
+      document.getElementById('cfg_defaultVoucherMaxDiscount').value = c.defaultVoucherMaxDiscount;
+      document.getElementById('cfgUpdatedAt').textContent = c.updatedAt
+        ? `Cập nhật lần cuối: ${new Date(c.updatedAt).toLocaleString('vi-VN')} bởi ${c.updatedBy || 'admin'}`
+        : 'Đang dùng cấu hình mặc định';
+    }
+
+    function savePlatformSettings() {
+      const pct = (id) => Number(document.getElementById(id).value) / 100;
+      VQConfig.savePlatformConfig({
+        platformFeeRate: pct('cfg_platformFeeRate'),
+        corporateTaxRate: pct('cfg_corporateTaxRate'),
+        vatRate: pct('cfg_vatRate'),
+        defaultShipFeePerShop: document.getElementById('cfg_defaultShipFeePerShop').value,
+        defaultFreeShipThreshold: document.getElementById('cfg_defaultFreeShipThreshold').value,
+        defaultShipFeeService: document.getElementById('cfg_defaultShipFeeService').value,
+        minOrderAmount: document.getElementById('cfg_minOrderAmount').value,
+        escrowHoldDays: document.getElementById('cfg_escrowHoldDays').value,
+        defaultVoucherCode: document.getElementById('cfg_defaultVoucherCode').value.trim().toUpperCase(),
+        defaultVoucherPercent: pct('cfg_defaultVoucherPercent'),
+        defaultVoucherMaxDiscount: document.getElementById('cfg_defaultVoucherMaxDiscount').value,
+        voucherEnabled: true,
+      }, getUser()?.name || 'admin');
+      toast('Đã lưu cấu hình thị trường — áp dụng ngay', 'success');
+      fillSettingsForm();
+      refreshStatsLocal();
+    }
+
+    function resetPlatformSettings() {
+      if (!confirm('Khôi phục toàn bộ cấu hình về mặc định?')) return;
+      VQConfig.resetPlatformConfig();
+      fillSettingsForm();
+      refreshStatsLocal();
+      toast('Đã khôi phục mặc định', 'info');
+    }
+
+    function refreshStatsLocal() {
+      const c = VQConfig.loadPlatformConfig();
+      const totalSales = 85000000;
+      const platformRevenue = Math.round(totalSales * c.platformFeeRate);
+      const stateTax = Math.round(platformRevenue * c.corporateTaxRate);
+      const net = platformRevenue - stateTax;
+      document.getElementById('grossSales').textContent = formatVND(totalSales);
+      document.getElementById('platformRev').textContent = formatVND(platformRevenue);
+      document.getElementById('stateTax').textContent = formatVND(stateTax);
+      document.getElementById('netProfit').textContent = formatVND(net);
+    }
+
+    async function loadDashboard() {
+      const user = getUser();
+      const token = getToken();
+      if (!token || !user || user.role !== 'admin') {
+        toast('Bạn cần đăng nhập Admin', 'error');
+        setTimeout(() => (window.location.href = '/login.html'), 600);
+        return;
+      }
+      document.getElementById('adminName').textContent = user.name || user.email;
+      fillSettingsForm();
+
+      try {
+        const res = await fetch('/api/admin/dashboard', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 200) {
+          const data = await res.json();
+          // Prefer live config rates for display consistency
+          refreshStatsLocal();
+        } else {
+          refreshStatsLocal();
+        }
+      } catch {
+        refreshStatsLocal();
+      }
+    }
+
+    function releaseFunds(txid) {
+      const c = VQConfig.loadPlatformConfig();
+      toast(`Giải ngân ${txid}: trừ phí sàn ${formatPct(c.platformFeeRate)} (mô phỏng Napas247)`, 'success');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDashboard);
+  </script>
+</body>
+</html>

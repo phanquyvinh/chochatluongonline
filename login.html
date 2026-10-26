@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng nhập — VinhQuay Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <a href="/" class="logo">
+        <div class="logo-mark">VQ</div>
+        <div class="logo-text">Vinh<span>Quay</span></div>
+      </a>
+      <h1>Đăng nhập hệ thống</h1>
+      <p class="subtitle">Admin · Đối tác bán hàng · Người mua</p>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="email@domain.com" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="password">Mật khẩu</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-block" id="loginBtn" onclick="handleLogin()">Đăng nhập</button>
+
+      <div class="auth-hint">
+        <strong>Tài khoản demo (đổi mật khẩu trên production):</strong><br>
+        Admin: <code>phanquyvinh@gmail.com</code> / <code>Beliveme76@</code><br>
+        Seller: <code>shopmau@gmail.com</code> / <code>Shop123@</code>
+      </div>
+
+      <p style="text-align:center;margin-top:18px;font-size:0.85rem;">
+        <a href="/" style="color:var(--primary);font-weight:600;">← Về trang chủ</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    async function handleLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) {
+        toast('Vui lòng nhập email và mật khẩu', 'error');
+        return;
+      }
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Đang xác thực...';
+
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login', email, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setSession(data.token, {
+            email: data.email || email,
+            name: data.name,
+            role: data.role,
+          });
+          toast('Đăng nhập thành công', 'success');
+          setTimeout(() => {
+            if (data.role === 'admin') window.location.href = '/admin.html';
+            else if (data.role === 'seller') window.location.href = '/seller.html';
+            else window.location.href = '/';
+          }, 500);
+        } else {
+          toast(data.message || 'Sai tài khoản hoặc mật khẩu', 'error');
+        }
+      } catch (e) {
+        toast('Không kết nối được máy chủ', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Đăng nhập';
+      }
+    }
+
+    document.getElementById('password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+  </script>
+</body>
+</html>

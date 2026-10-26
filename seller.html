@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kênh đối tác — VinhQuay Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="dash-layout">
+    <header class="dash-header">
+      <div class="container dash-header-inner">
+        <div class="dash-title">
+          <a href="/" class="logo" style="margin-right:8px">
+            <div class="logo-mark">VQ</div>
+          </a>
+          Kênh đối tác
+          <span class="dash-badge badge-seller">Seller</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="sellerName" style="font-size:0.9rem;color:var(--text-secondary)"></span>
+          <a href="/" class="btn btn-ghost btn-sm">Trang chủ</a>
+          <button class="btn btn-outline btn-sm" onclick="logout()">Đăng xuất</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="dash-body">
+      <div class="container">
+
+        <!-- Nhận đơn -->
+        <div class="panel">
+          <h2 class="panel-title">🟢 Trạng thái gian hàng</h2>
+          <p class="panel-desc">Bật/tắt nhận đơn mới. Khi tắt, khách không thể thêm hàng của bạn vào giỏ.</p>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+            <input type="checkbox" id="acceptOrders" onchange="toggleAccept()">
+            Đang nhận đơn hàng
+          </label>
+        </div>
+
+        <!-- Giá & phí ship do seller tự set -->
+        <div class="panel">
+          <h2 class="panel-title">💰 Tùy chỉnh phí vận chuyển & dịch vụ</h2>
+          <p class="panel-desc">
+            Bạn tự quyết định phí ship sản phẩm, ngưỡng miễn ship, phụ phí kỹ thuật viên đến nhà.
+            Phí sàn do Admin quy định (hiện <strong id="platformFeeLabel">1%</strong>) — trừ khi giải ngân.
+          </p>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Phí ship sản phẩm (đ / đơn shop)</label>
+              <input type="number" id="shipFeeProduct" min="0" step="1000" placeholder="30000">
+            </div>
+            <div class="form-field">
+              <label>Miễn ship từ (đ) — 0 = không miễn</label>
+              <input type="number" id="freeShipThreshold" min="0" step="10000" placeholder="500000">
+            </div>
+            <div class="form-field">
+              <label>Phí ship dịch vụ cơ bản (đ)</label>
+              <input type="number" id="shipFeeService" min="0" step="1000" placeholder="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Phụ phí thợ đến tận nơi (đ)</label>
+              <input type="number" id="serviceCallOutFee" min="0" step="1000" placeholder="0">
+            </div>
+            <div class="form-field">
+              <label>Đơn tối thiểu gian hàng (đ)</label>
+              <input type="number" id="minOrderAmount" min="0" step="10000" placeholder="0">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="saveShopPricing()">Lưu bảng giá vận chuyển</button>
+        </div>
+
+        <!-- Sửa giá từng món -->
+        <div class="panel">
+          <h2 class="panel-title">📦 Giá sản phẩm & dịch vụ của bạn</h2>
+          <p class="panel-desc">Chỉnh giá bán bất kỳ lúc nào. Giá mới áp dụng ngay cho khách (giỏ hàng sẽ đồng bộ).</p>
+          <div class="table-wrap">
+            <table class="data-table" id="sellerItemsTable">
+              <thead>
+                <tr>
+                  <th>Loại</th>
+                  <th>Tên</th>
+                  <th>Giá hiện tại (đ)</th>
+                  <th>Giá mới</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="sellerItemsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ngân hàng -->
+        <div class="panel">
+          <h2 class="panel-title">🏦 Tài khoản thụ hưởng</h2>
+          <p class="panel-desc">Nhận giải ngân escrow (đã trừ phí sàn). Cập nhật khi đổi tài khoản.</p>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Ngân hàng</label>
+              <input type="text" id="sellerBankName" placeholder="VD: Vietcombank">
+            </div>
+            <div class="form-field">
+              <label>Số tài khoản</label>
+              <input type="text" id="sellerBankAcc" placeholder="Số tài khoản">
+            </div>
+            <div class="form-field">
+              <label>Chủ tài khoản</label>
+              <input type="text" id="sellerBankHolder" placeholder="Họ tên chủ TK">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="saveBank()">Lưu liên kết ngân hàng</button>
+        </div>
+
+        <!-- Đơn hàng -->
+        <div class="panel">
+          <h2 class="panel-title">📋 Đơn hàng & lịch hẹn</h2>
+          <p class="panel-desc">Trạng thái escrow. Phí sàn trừ khi giải ngân theo % Admin cấu hình.</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Mã đơn</th>
+                  <th>Loại</th>
+                  <th>Nội dung</th>
+                  <th>Giá trị</th>
+                  <th>Phí sàn</th>
+                  <th>Trạng thái tiền</th>
+                </tr>
+              </thead>
+              <tbody id="sellerOrdersBody">
+                <tr>
+                  <td colspan="6" style="color:var(--text-muted);text-align:center">Đang tải...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentShopId = 's101';
+
+    function resolveShopId(user) {
+      if (user.shopId) return user.shopId;
+      // demo mapping
+      if (user.email === 'shopmau@gmail.com') return 's101';
+      return 's101';
+    }
+
+    function guardSeller() {
+      const user = getUser();
+      const token = getToken();
+      if (!token || !user || (user.role !== 'seller' && user.role !== 'admin')) {
+        toast('Vui lòng đăng nhập tài khoản đối tác', 'error');
+        setTimeout(() => (window.location.href = '/login.html'), 600);
+        return null;
+      }
+      document.getElementById('sellerName').textContent = user.name || user.email;
+      currentShopId = resolveShopId(user);
+      return user;
+    }
+
+    function loadShopForm() {
+      const s = VQConfig.loadShopSettings(currentShopId);
+      const p = VQConfig.loadPlatformConfig();
+      document.getElementById('platformFeeLabel').textContent = formatPct(p.platformFeeRate);
+      document.getElementById('acceptOrders').checked = s.acceptOrders !== false;
+      document.getElementById('shipFeeProduct').value = s.shipFeeProduct ?? 0;
+      document.getElementById('freeShipThreshold').value = s.freeShipThreshold ?? 0;
+      document.getElementById('shipFeeService').value = s.shipFeeService ?? 0;
+      document.getElementById('serviceCallOutFee').value = s.serviceCallOutFee ?? 0;
+      document.getElementById('minOrderAmount').value = s.minOrderAmount ?? 0;
+
+      const bank = JSON.parse(localStorage.getItem('vq_seller_bank_' + currentShopId) || localStorage.getItem('vq_seller_bank') || '{}');
+      if (bank.name) document.getElementById('sellerBankName').value = bank.name;
+      if (bank.acc) document.getElementById('sellerBankAcc').value = bank.acc;
+      if (bank.holder) document.getElementById('sellerBankHolder').value = bank.holder;
+
+      renderSellerItems();
+      renderSellerOrders(p);
+    }
+
+    function toggleAccept() {
+      const on = document.getElementById('acceptOrders').checked;
+      VQConfig.saveShopSettings(currentShopId, { acceptOrders: on });
+      toast(on ? 'Đã bật nhận đơn' : 'Đã tạm ngưng nhận đơn', 'info');
+    }
+
+    function saveShopPricing() {
+      VQConfig.saveShopSettings(currentShopId, {
+        shipFeeProduct: document.getElementById('shipFeeProduct').value,
+        freeShipThreshold: document.getElementById('freeShipThreshold').value,
+        shipFeeService: document.getElementById('shipFeeService').value,
+        serviceCallOutFee: document.getElementById('serviceCallOutFee').value,
+        minOrderAmount: document.getElementById('minOrderAmount').value,
+        acceptOrders: document.getElementById('acceptOrders').checked,
+      });
+      toast('Đã lưu bảng giá vận chuyển / dịch vụ của gian hàng', 'success');
+    }
+
+    function renderSellerItems() {
+      const items = VQConfig.getCatalogByShop(currentShopId);
+      const body = document.getElementById('sellerItemsBody');
+      if (!items.length) {
+        body.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center">Chưa có sản phẩm/dịch vụ</td></tr>';
+        return;
+      }
+      body.innerHTML = items.map((item) => `
+        <tr>
+          <td>${item.type === 'product' ? '📦 SP' : '🛠️ DV'}</td>
+          <td>${item.name}</td>
+          <td><strong>${formatVND(item.price)}</strong></td>
+          <td>
+            <input type="number" id="price_${item.id}" value="${item.price}" min="0" step="1000"
+              style="width:120px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px">
+          </td>
+          <td>
+            <button class="btn btn-primary btn-sm" onclick="updateItemPrice('${item.id}')">Cập nhật</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateItemPrice(itemId) {
+      const input = document.getElementById('price_' + itemId);
+      const price = Number(input.value);
+      if (Number.isNaN(price) || price < 0) {
+        toast('Giá không hợp lệ', 'error');
+        return;
+      }
+      VQConfig.saveItemPrice(itemId, price);
+      toast('Đã cập nhật giá — khách thấy ngay', 'success');
+      renderSellerItems();
+    }
+
+    function saveBank() {
+      const name = document.getElementById('sellerBankName').value.trim();
+      const acc = document.getElementById('sellerBankAcc').value.trim();
+      const holder = document.getElementById('sellerBankHolder').value.trim();
+      if (!name || !acc || !holder) {
+        toast('Vui lòng điền đủ thông tin ngân hàng', 'error');
+        return;
+      }
+      localStorage.setItem('vq_seller_bank_' + currentShopId, JSON.stringify({ name, acc, holder }));
+      toast('Đã lưu tài khoản thụ hưởng', 'success');
+    }
+
+    function renderSellerOrders(platform) {
+      const body = document.getElementById('sellerOrdersBody');
+      const feeRate = platform.platformFeeRate || 0.01;
+      // Demo rows + any local orders for this shop
+      const demo = [
+        { id: '#ORD-9921', type: 'product', name: 'Bo mạch điều khiển điều hòa Senko', value: 350000, status: 'held' },
+        { id: '#SRV-4412', type: 'service', name: 'Lắp đặt & đấu nối bo mạch tại nhà', value: 150000, status: 'released' },
+      ];
+      const statusHtml = {
+        held: '<span class="status-pill status-held">Tạm giữ escrow</span>',
+        released: '<span class="status-pill status-released">Đã giải ngân</span>',
+        pending: '<span class="status-pill status-pending">Chờ xác nhận</span>',
+      };
+      body.innerHTML = demo.map((o) => {
+        const fee = Math.round(o.value * feeRate);
+        return `
+          <tr>
+            <td>${o.id}</td>
+            <td>${o.type === 'product' ? '📦 Sản phẩm' : '🛠️ Dịch vụ'}</td>
+            <td>${o.name}</td>
+            <td>${formatVND(o.value)}</td>
+            <td>${formatVND(fee)} (${formatPct(feeRate)})</td>
+            <td>${statusHtml[o.status] || o.status}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!guardSeller()) return;
+      loadShopForm();
+    });
+  </script>
+</body>
+</html>
