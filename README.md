@@ -32,7 +32,7 @@ Không còn hardcode 30k/đơn — mỗi shop tự quyết.
 - Admin: `phanquyvinh@gmail.com` / `Beliveme76@`
 - Seller: `shopmau@gmail.com` / `Shop123@` (shop `s101`)
 
-Voucher demo: `VINHQUAY10`
+Voucher demo: `PHANQUYVINH`
 
 ## Scale
 
