@@ -1,4 +1,4 @@
-# VinhQuay Market v2.1
+# Phan Quý Vinh Market v2.1
 
 Sàn **linh kiện + dịch vụ kỹ thuật** · Escrow · **Mọi chỉ số giá linh hoạt**.
 
