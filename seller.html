@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gian hàng — chochatluongonline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="dash-layout">
+    <header class="dash-header">
+      <div class="container dash-header-inner">
+        <div class="dash-title">
+          <a href="/" class="logo" style="margin-right:8px"><div class="logo-mark">CCL</div></a>
+          Gian hàng
+          <span class="dash-badge badge-seller">Seller</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="sellerName" style="font-size:0.9rem;color:var(--text-secondary)"></span>
+          <a href="/" class="btn btn-ghost btn-sm">Trang chủ</a>
+          <button class="btn btn-outline btn-sm" onclick="logout()">Thoát</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="dash-body">
+      <div class="container">
+        <div class="panel">
+          <h2 class="panel-title">Trạng thái</h2>
+          <label style="display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer">
+            <input type="checkbox" id="acceptOrders" onchange="toggleAccept()"> Đang nhận đơn
+          </label>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Phí vận chuyển</h2>
+          <div class="form-row">
+            <div class="form-field"><label>Ship sản phẩm (đ)</label><input type="number" id="shipFeeProduct" min="0" step="1000"></div>
+            <div class="form-field"><label>Miễn ship từ (đ)</label><input type="number" id="freeShipThreshold" min="0" step="10000"></div>
+            <div class="form-field"><label>Phụ phí dịch vụ (đ)</label><input type="number" id="serviceCallOutFee" min="0" step="1000"></div>
+            <div class="form-field"><label>Đơn tối thiểu (đ)</label><input type="number" id="minOrderAmount" min="0" step="10000"></div>
+          </div>
+          <button class="btn btn-primary" onclick="savePricing()">Lưu</button>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Đăng sản phẩm / dịch vụ</h2>
+          <div class="form-row">
+            <div class="form-field" style="flex:2"><label>Tên</label><input type="text" id="pName" placeholder="Tên sản phẩm hoặc dịch vụ"></div>
+            <div class="form-field"><label>Loại</label>
+              <select id="pType"><option value="product">Sản phẩm</option><option value="service">Dịch vụ</option></select>
+            </div>
+            <div class="form-field"><label>Giá (đ)</label><input type="number" id="pPrice" min="0" step="1000"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>Danh mục</label>
+              <select id="pCat">
+                <option value="linh-kien">Linh kiện</option>
+                <option value="sua-chua">Sửa chữa</option>
+                <option value="lap-dat">Lắp đặt</option>
+                <option value="khac">Khác</option>
+              </select>
+            </div>
+            <div class="form-field" style="flex:2"><label>URL hình ảnh</label><input type="url" id="pImage" placeholder="https://..."></div>
+            <div class="form-field"><label>Emoji</label><input type="text" id="pEmoji" placeholder="📦" maxlength="4"></div>
+          </div>
+          <div class="form-field" style="margin-bottom:12px">
+            <label>Mô tả</label>
+            <textarea id="pDesc" rows="3" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px"></textarea>
+          </div>
+          <div class="form-field" style="margin-bottom:12px">
+            <label>Hướng dẫn chi tiết</label>
+            <textarea id="pGuide" rows="3" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px"></textarea>
+          </div>
+          <input type="hidden" id="pEditId">
+          <button class="btn btn-primary" onclick="saveProductForm()">Lưu sản phẩm</button>
+          <button class="btn btn-ghost" onclick="resetProductForm()">Hủy</button>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Danh sách của bạn</h2>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Tên</th><th>Loại</th><th>Giá</th><th></th></tr></thead>
+              <tbody id="myProducts"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Tài khoản nhận tiền</h2>
+          <div class="form-row">
+            <div class="form-field"><label>Ngân hàng</label><input type="text" id="bankName"></div>
+            <div class="form-field"><label>Số TK</label><input type="text" id="bankAcc"></div>
+            <div class="form-field"><label>Chủ TK</label><input type="text" id="bankHolder"></div>
+          </div>
+          <button class="btn btn-primary" onclick="saveBank()">Lưu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let session = null;
+
+    function init() {
+      session = requireAuth(['seller', 'admin']);
+      if (!session) return;
+      document.getElementById('sellerName').textContent = session.shopName || session.name;
+      if (!session.shopId && session.role === 'admin') session.shopId = 's101';
+      const s = CCLConfig.loadShopSettings(session.shopId);
+      document.getElementById('acceptOrders').checked = s.acceptOrders !== false;
+      document.getElementById('shipFeeProduct').value = s.shipFeeProduct || 0;
+      document.getElementById('freeShipThreshold').value = s.freeShipThreshold || 0;
+      document.getElementById('serviceCallOutFee').value = s.serviceCallOutFee || 0;
+      document.getElementById('minOrderAmount').value = s.minOrderAmount || 0;
+      const bank = JSON.parse(localStorage.getItem('ccl_bank_' + session.shopId) || '{}');
+      if (bank.name) document.getElementById('bankName').value = bank.name;
+      if (bank.acc) document.getElementById('bankAcc').value = bank.acc;
+      if (bank.holder) document.getElementById('bankHolder').value = bank.holder;
+      renderMyProducts();
+    }
+
+    function toggleAccept() {
+      CCLConfig.saveShopSettings(session.shopId, { acceptOrders: document.getElementById('acceptOrders').checked });
+      toast('Đã cập nhật', 'info');
+    }
+    function savePricing() {
+      CCLConfig.saveShopSettings(session.shopId, {
+        shipFeeProduct: document.getElementById('shipFeeProduct').value,
+        freeShipThreshold: document.getElementById('freeShipThreshold').value,
+        serviceCallOutFee: document.getElementById('serviceCallOutFee').value,
+        minOrderAmount: document.getElementById('minOrderAmount').value,
+      });
+      toast('Đã lưu phí vận chuyển', 'success');
+    }
+    function saveBank() {
+      localStorage.setItem('ccl_bank_' + session.shopId, JSON.stringify({
+        name: document.getElementById('bankName').value.trim(),
+        acc: document.getElementById('bankAcc').value.trim(),
+        holder: document.getElementById('bankHolder').value.trim(),
+      }));
+      toast('Đã lưu tài khoản', 'success');
+    }
+
+    function renderMyProducts() {
+      const list = CCLStore.getProducts().filter((p) =>
+        p.shopId === session.shopId || (session.email && p.sellerEmail === session.email)
+      );
+      const body = document.getElementById('myProducts');
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);text-align:center">Chưa có sản phẩm</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map((p) => `
+        <tr>
+          <td>${p.name}</td>
+          <td>${p.type === 'product' ? 'SP' : 'DV'}</td>
+          <td>${formatVND(p.price)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'>Sửa</button>
+            <button class="btn btn-ghost btn-sm" onclick="removeProduct('${p.id}')">Ẩn</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function resetProductForm() {
+      document.getElementById('pEditId').value = '';
+      document.getElementById('pName').value = '';
+      document.getElementById('pPrice').value = '';
+      document.getElementById('pDesc').value = '';
+      document.getElementById('pGuide').value = '';
+      document.getElementById('pImage').value = '';
+      document.getElementById('pEmoji').value = '';
+    }
+
+    function editProduct(p) {
+      document.getElementById('pEditId').value = p.id;
+      document.getElementById('pName').value = p.name;
+      document.getElementById('pType').value = p.type;
+      document.getElementById('pPrice').value = p.price;
+      document.getElementById('pCat').value = p.category || 'khac';
+      document.getElementById('pDesc').value = p.description || '';
+      document.getElementById('pGuide').value = p.guide || '';
+      document.getElementById('pImage').value = (p.images && p.images[0]) || '';
+      document.getElementById('pEmoji').value = p.emoji || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function saveProductForm() {
+      const name = document.getElementById('pName').value.trim();
+      const price = Number(document.getElementById('pPrice').value);
+      if (!name || !(price >= 0)) { toast('Nhập tên và giá', 'error'); return; }
+      const id = document.getElementById('pEditId').value || undefined;
+      const img = document.getElementById('pImage').value.trim();
+      CCLStore.saveProduct({
+        id,
+        shopId: session.shopId,
+        shopName: session.shopName || session.name,
+        sellerEmail: session.email,
+        type: document.getElementById('pType').value,
+        name,
+        price,
+        category: document.getElementById('pCat').value,
+        description: document.getElementById('pDesc').value.trim(),
+        guide: document.getElementById('pGuide').value.trim(),
+        images: img ? [img] : [],
+        emoji: document.getElementById('pEmoji').value.trim() || (document.getElementById('pType').value === 'service' ? '🛠️' : '📦'),
+        active: true,
+      });
+      toast('Đã lưu sản phẩm', 'success');
+      resetProductForm();
+      renderMyProducts();
+    }
+
+    function removeProduct(id) {
+      if (!confirm('Ẩn sản phẩm này?')) return;
+      CCLStore.deleteProduct(id, session.email);
+      toast('Đã ẩn', 'info');
+      renderMyProducts();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

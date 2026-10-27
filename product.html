@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sản phẩm — chochatluongonline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .product-layout { display: grid; grid-template-columns: 1fr 1.2fr; gap: 28px; margin-top: 24px; }
+    @media (max-width: 768px) { .product-layout { grid-template-columns: 1fr; } }
+    .product-gallery {
+      background: var(--bg-muted); border-radius: var(--radius-lg); height: 320px;
+      display: flex; align-items: center; justify-content: center; font-size: 5rem;
+      overflow: hidden; border: 1px solid var(--border);
+    }
+    .product-gallery img { width: 100%; height: 100%; object-fit: cover; }
+    .review-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .review-item:last-child { border-bottom: none; }
+    .star-input { display: flex; gap: 4px; font-size: 1.4rem; cursor: pointer; }
+    .star-input span { color: var(--border-strong); }
+    .star-input span.on { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="/" class="logo">
+        <div class="logo-mark">CCL</div>
+        <div class="logo-text">chochatluong<span>online</span></div>
+      </a>
+      <div class="header-actions" id="userNav"></div>
+    </div>
+  </header>
+
+  <main class="container" style="padding:24px 20px 48px" id="main">
+    <p style="color:var(--text-muted)">Đang tải...</p>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentRating = 5;
+    const params = new URLSearchParams(location.search);
+    const productId = params.get('id');
+
+    function setStar(n) {
+      currentRating = n;
+      document.querySelectorAll('#starInput span').forEach((el, i) => {
+        el.classList.toggle('on', i < n);
+      });
+    }
+
+    function render() {
+      renderUserNav();
+      const p = CCLStore.getProductById(productId);
+      if (!p) {
+        document.getElementById('main').innerHTML = '<p>Không tìm thấy sản phẩm. <a href="/">Về trang chủ</a></p>';
+        return;
+      }
+      const reviews = CCLStore.getReviews((r) => r.productId === p.id);
+      const session = getSession();
+      const img = p.images && p.images[0]
+        ? `<img src="${p.images[0]}" alt="">`
+        : (p.emoji || '📦');
+
+      document.title = p.name + ' — chochatluongonline';
+      document.getElementById('main').innerHTML = `
+        <div class="product-layout">
+          <div class="product-gallery">${img}</div>
+          <div>
+            <a href="/shop.html?id=${p.shopId}" style="color:var(--primary);font-size:0.9rem;font-weight:600">🏪 ${p.shopName}</a>
+            <h1 style="font-size:1.5rem;margin:8px 0 12px;letter-spacing:-0.3px">${p.name}</h1>
+            <div style="color:var(--text-muted);margin-bottom:12px">${stars(p.rating)} ${p.rating || 0} · ${reviews.length} đánh giá · Đã bán ${p.sold || 0}</div>
+            <div class="price" style="font-size:1.6rem;margin-bottom:16px">${formatVND(p.price)}</div>
+            <button class="btn btn-primary" onclick="addToCart('${p.id}')" style="min-width:160px">Thêm vào giỏ</button>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:28px">
+          <h2 class="panel-title">Mô tả</h2>
+          <p style="color:var(--text-secondary);white-space:pre-wrap">${p.description || '—'}</p>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Hướng dẫn</h2>
+          <p style="color:var(--text-secondary);white-space:pre-wrap">${p.guide || '—'}</p>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Đánh giá (${reviews.length})</h2>
+          <div id="reviewList">
+            ${reviews.length ? reviews.map((r) => `
+              <div class="review-item" data-id="${r.id}">
+                <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                  <strong>${r.userName || 'Người mua'}</strong>
+                  <span style="color:#f59e0b">${stars(r.rating)}</span>
+                </div>
+                <p style="margin-top:6px;color:var(--text-secondary)">${r.content || ''}</p>
+                <div style="margin-top:6px;font-size:0.8rem;color:var(--text-muted)">${new Date(r.createdAt).toLocaleString('vi-VN')}
+                  ${session && (session.email === r.userEmail || session.role === 'admin')
+                    ? ` · <button class="btn btn-ghost btn-sm" onclick="removeReview('${r.id}')">Xóa</button>` : ''}
+                </div>
+              </div>
+            `).join('') : '<p style="color:var(--text-muted)">Chưa có đánh giá</p>'}
+          </div>
+
+          ${session && session.role !== 'seller' ? `
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+            <h3 style="font-size:0.95rem;margin-bottom:10px">Viết đánh giá</h3>
+            <div class="star-input" id="starInput">
+              ${[1,2,3,4,5].map((n) => `<span class="on" onmouseenter="setStar(${n})" onclick="setStar(${n})">★</span>`).join('')}
+            </div>
+            <textarea id="reviewContent" rows="3" placeholder="Nội dung đánh giá..."
+              style="width:100%;margin-top:10px;padding:10px;border:1.5px solid var(--border);border-radius:8px;resize:vertical"></textarea>
+            <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="submitReview()">Gửi đánh giá</button>
+          </div>` : session ? '' : '<p style="margin-top:12px;color:var(--text-muted)"><a href="/login.html" style="color:var(--primary)">Đăng nhập</a> để đánh giá</p>'}
+        </div>
+      `;
+    }
+
+    function submitReview() {
+      const content = document.getElementById('reviewContent').value;
+      const p = CCLStore.getProductById(productId);
+      const res = CCLStore.addReview({
+        productId: p.id, shopId: p.shopId,
+        rating: currentRating, content,
+      });
+      if (res.error) { toast(res.error, 'error'); return; }
+      toast('Đã gửi đánh giá', 'success');
+      render();
+    }
+
+    function removeReview(id) {
+      const s = getSession();
+      if (!s) return;
+      const res = CCLStore.deleteReview(id, s);
+      if (res.error) { toast(res.error, 'error'); return; }
+      toast('Đã xóa đánh giá', 'info');
+      render();
+    }
+
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "chochatluongonline",
+  "version": "3.0.0",
+  "description": "chochatluongonline — Phan Quý Vinh",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "engines": { "node": ">=18" }
+}
