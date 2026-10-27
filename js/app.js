@@ -1,25 +1,22 @@
 /**
- * VinhQuay Market — Core App
- * Pricing: platform fee (Admin) + shop ship/prices (Seller customizable)
+ * chochatluongonline — UI helpers & marketplace logic
  */
-
-const STORAGE_KEYS = {
-  cart: 'vq_cart_v2',
-  token: 'vq_token',
-  user: 'vq_user',
-  orders: 'vq_orders_v1',
-};
+const $ = (sel, el = document) => el.querySelector(sel);
+const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 
 function formatVND(n) {
   return Number(n || 0).toLocaleString('vi-VN') + ' đ';
 }
-
 function formatPct(rate) {
   return (Number(rate || 0) * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
 }
+function stars(n) {
+  const r = Math.round(Number(n) || 0);
+  return '★'.repeat(r) + '☆'.repeat(5 - r);
+}
 
 function toast(message, type = 'info') {
-  let box = document.querySelector('.toast-container');
+  let box = $('.toast-container');
   if (!box) {
     box = document.createElement('div');
     box.className = 'toast-container';
@@ -29,424 +26,282 @@ function toast(message, type = 'info') {
   el.className = `toast ${type}`;
   el.textContent = message;
   box.appendChild(el);
-  setTimeout(() => {
-    el.style.opacity = '0';
-    el.style.transition = 'opacity 0.3s';
-    setTimeout(() => el.remove(), 300);
-  }, 3200);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3200);
 }
 
-function getUser() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || 'null');
-  } catch {
+function getSession() {
+  return window.CCLStore ? CCLStore.getSession() : null;
+}
+
+function requireAuth(roles) {
+  const s = getSession();
+  if (!s) {
+    toast('Vui lòng đăng nhập', 'error');
+    setTimeout(() => (location.href = '/login.html'), 600);
     return null;
   }
+  if (roles && !roles.includes(s.role)) {
+    toast('Không có quyền truy cập', 'error');
+    setTimeout(() => (location.href = '/'), 600);
+    return null;
+  }
+  if (CCLStore.isBlocked(s.email)) {
+    toast('Tài khoản đã bị khóa', 'error');
+    CCLStore.clearSession();
+    setTimeout(() => (location.href = '/login.html'), 800);
+    return null;
+  }
+  return s;
 }
 
-function getToken() {
-  return localStorage.getItem(STORAGE_KEYS.token);
-}
-
-function setSession(token, user) {
-  localStorage.setItem(STORAGE_KEYS.token, token);
-  localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
-}
-
-function clearSession() {
-  localStorage.removeItem(STORAGE_KEYS.token);
-  localStorage.removeItem(STORAGE_KEYS.user);
+function logout() {
+  if (window.CCLStore) CCLStore.clearSession();
+  toast('Đã đăng xuất', 'info');
+  setTimeout(() => (location.href = '/'), 400);
 }
 
 function getCart() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.cart) || '[]');
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem('ccl_cart_v2') || '[]'); }
+  catch { return []; }
 }
-
 function saveCart(cart) {
-  localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(cart));
+  localStorage.setItem('ccl_cart_v2', JSON.stringify(cart));
   updateCartBadge();
 }
-
 function updateCartBadge() {
   const cart = getCart();
-  const totalQty = cart.reduce((s, i) => s + (i.qty || 1), 0);
-  document.querySelectorAll('[data-cart-count]').forEach((el) => {
-    el.textContent = totalQty;
-    el.style.display = totalQty > 0 ? 'flex' : 'none';
+  const q = cart.reduce((s, i) => s + (i.qty || 1), 0);
+  $$('[data-cart-count]').forEach((el) => {
+    el.textContent = q;
+    el.style.display = q > 0 ? 'flex' : 'none';
   });
 }
 
 function addToCart(itemId) {
-  const catalog = window.VQConfig.getCatalog();
-  const item = catalog.find((x) => x.id === itemId);
+  const item = CCLStore.getProductById(itemId);
   if (!item) return;
-  const shop = window.VQConfig.loadShopSettings(item.shopId);
+  const shop = CCLConfig.loadShopSettings(item.shopId);
   if (shop.acceptOrders === false) {
-    toast('Gian hàng đang tạm ngưng nhận đơn', 'error');
+    toast('Gian hàng tạm ngưng nhận đơn', 'error');
     return;
   }
   const cart = getCart();
-  const existing = cart.find((c) => c.id === itemId);
-  if (existing) {
-    existing.qty = (existing.qty || 1) + 1;
-    // refresh price from catalog in case seller changed it
-    existing.price = item.price;
-  } else {
-    cart.push({ ...item, qty: 1 });
-  }
+  const ex = cart.find((c) => c.id === itemId);
+  if (ex) { ex.qty = (ex.qty || 1) + 1; ex.price = item.price; }
+  else cart.push({ ...item, qty: 1 });
   saveCart(cart);
-  toast(`Đã thêm “${item.name}” vào giỏ`, 'success');
+  toast('Đã thêm vào giỏ', 'success');
   if (typeof renderCart === 'function') renderCart();
 }
 
-function changeQty(itemId, delta) {
+function changeQty(id, d) {
   let cart = getCart();
-  const row = cart.find((c) => c.id === itemId);
+  const row = cart.find((c) => c.id === id);
   if (!row) return;
-  row.qty = Math.max(0, (row.qty || 1) + delta);
+  row.qty = Math.max(0, (row.qty || 1) + d);
   cart = cart.filter((c) => c.qty > 0);
   saveCart(cart);
   if (typeof renderCart === 'function') renderCart();
 }
 
-function removeFromCart(itemId) {
-  saveCart(getCart().filter((c) => c.id !== itemId));
+function removeFromCart(id) {
+  saveCart(getCart().filter((c) => c.id !== id));
   if (typeof renderCart === 'function') renderCart();
-  toast('Đã xóa khỏi giỏ hàng', 'info');
 }
 
-function renderCatalog(filter = 'all', query = '') {
-  const productsGrid = document.getElementById('productsGrid');
-  const servicesGrid = document.getElementById('servicesGrid');
-  if (!productsGrid || !servicesGrid) return;
+function renderUserNav() {
+  const el = $('#userNav');
+  if (!el) return;
+  const s = getSession();
+  if (s) {
+    const initial = (s.name || s.email || 'U').charAt(0).toUpperCase();
+    el.innerHTML = `
+      <div class="nav-user">
+        <div class="avatar">${initial}</div>
+        <span style="font-size:0.9rem;font-weight:600">${s.name || s.email}</span>
+        ${s.role === 'admin' ? '<a href="/admin.html" class="btn btn-ghost btn-sm">Quản trị</a>' : ''}
+        ${s.role === 'seller' ? '<a href="/seller.html" class="btn btn-ghost btn-sm">Gian hàng</a>' : ''}
+        ${s.role === 'buyer' || s.role === 'admin' ? '<a href="/orders.html" class="btn btn-ghost btn-sm">Đơn hàng</a>' : ''}
+        <button class="btn btn-outline btn-sm" onclick="logout()">Thoát</button>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <a href="/login.html" class="btn btn-ghost btn-sm">Đăng nhập</a>
+      <a href="/register.html" class="btn btn-primary btn-sm">Đăng ký</a>`;
+  }
+}
 
-  const catalog = window.VQConfig.getCatalog();
-  const q = query.trim().toLowerCase();
-  let items = catalog.filter((item) => {
-    if (filter === 'product' && item.type !== 'product') return false;
-    if (filter === 'service' && item.type !== 'service') return false;
-    if (filter !== 'all' && filter !== 'product' && filter !== 'service' && item.category !== filter) return false;
-    if (q) {
-      const hay = `${item.name} ${item.shopName} ${item.category}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
+function productCard(item) {
+  const shop = CCLConfig.loadShopSettings(item.shopId);
+  const img = (item.images && item.images[0])
+    ? `<img src="${item.images[0]}" alt="" style="width:100%;height:100%;object-fit:cover">`
+    : `<span style="font-size:2.4rem">${item.emoji || '📦'}</span>`;
+  const rc = item.reviewsCount || 0;
+  return `
+  <article class="card">
+    <a href="/product.html?id=${item.id}" class="card-img">${img}
+      <span class="card-badge ${item.type === 'product' ? 'badge-product' : 'badge-service'}">${item.type === 'product' ? 'Sản phẩm' : 'Dịch vụ'}</span>
+    </a>
+    <div class="card-body">
+      <a href="/shop.html?id=${item.shopId}" class="card-shop">🏪 ${item.shopName}</a>
+      <a href="/product.html?id=${item.id}" class="card-title">${item.name}</a>
+      <div class="card-meta"><span>${stars(item.rating)} ${item.rating || 0}</span><span>·</span><span>${rc} đánh giá</span></div>
+      <div class="card-price">
+        <div class="price">${formatVND(item.price)}</div>
+        <button class="btn btn-primary btn-sm" onclick="event.preventDefault();addToCart('${item.id}')">Thêm</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+let currentFilter = 'all';
+function setFilter(f) {
+  currentFilter = f;
+  $$('.chip').forEach((c) => c.classList.toggle('active', c.dataset.filter === f));
+  renderCatalog();
+}
+function renderCatalog() {
+  const pg = $('#productsGrid'), sg = $('#servicesGrid');
+  if (!pg || !sg) return;
+  const q = ($('#searchInput')?.value || '').trim().toLowerCase();
+  let items = CCLStore.getProducts();
+  items = items.filter((item) => {
+    if (currentFilter === 'product' && item.type !== 'product') return false;
+    if (currentFilter === 'service' && item.type !== 'service') return false;
+    if (!['all', 'product', 'service'].includes(currentFilter) && item.category !== currentFilter) return false;
+    if (q && !`${item.name} ${item.shopName}`.toLowerCase().includes(q)) return false;
     return true;
   });
-
   const products = items.filter((i) => i.type === 'product');
   const services = items.filter((i) => i.type === 'service');
-
-  const cardHtml = (item) => {
-    const shop = window.VQConfig.loadShopSettings(item.shopId);
-    const shipHint = item.type === 'service'
-      ? (shop.serviceCallOutFee > 0 ? `Phụ phí KT: ${formatVND(shop.serviceCallOutFee)}` : 'Thợ đến tận nơi')
-      : (shop.freeShipThreshold > 0
-          ? `Ship ${formatVND(shop.shipFeeProduct)} · Free từ ${formatVND(shop.freeShipThreshold)}`
-          : `Ship ${formatVND(shop.shipFeeProduct)}`);
-    return `
-    <article class="card" data-id="${item.id}">
-      <div class="card-img">
-        ${item.emoji}
-        <span class="card-badge ${item.type === 'product' ? 'badge-product' : 'badge-service'}">
-          ${item.type === 'product' ? 'Sản phẩm' : 'Dịch vụ'}
-        </span>
-      </div>
-      <div class="card-body">
-        <div class="card-shop">🏪 ${item.shopName}</div>
-        <h3 class="card-title">${item.name}</h3>
-        <div class="card-meta">
-          <span>★ ${item.rating}</span>
-          <span>·</span>
-          <span>Đã bán ${item.sold}</span>
-        </div>
-        <div class="card-meta" style="color:var(--primary);font-size:0.75rem">${shipHint}</div>
-        <div class="card-price">
-          <div class="price">${formatVND(item.price)}</div>
-          <button class="btn btn-primary btn-sm" onclick="addToCart('${item.id}')">
-            ${item.type === 'product' ? 'Thêm giỏ' : 'Đặt lịch'}
-          </button>
-        </div>
-      </div>
-    </article>`;
-  };
-
-  productsGrid.innerHTML = products.length
-    ? products.map(cardHtml).join('')
-    : '<p style="color:var(--text-muted);grid-column:1/-1;padding:20px 0;">Không tìm thấy sản phẩm phù hợp.</p>';
-  servicesGrid.innerHTML = services.length
-    ? services.map(cardHtml).join('')
-    : '<p style="color:var(--text-muted);grid-column:1/-1;padding:20px 0;">Không tìm thấy dịch vụ phù hợp.</p>';
+  pg.innerHTML = products.length ? products.map(productCard).join('') : '<p class="empty-msg">Không có sản phẩm</p>';
+  sg.innerHTML = services.length ? services.map(productCard).join('') : '<p class="empty-msg">Không có dịch vụ</p>';
 }
 
 function renderCart() {
-  const container = document.getElementById('cartContainer');
-  const summary = document.getElementById('cartSummary');
+  const container = $('#cartContainer');
+  const summary = $('#cartSummary');
   if (!container) return;
-
   const cart = getCart();
-  if (cart.length === 0) {
-    container.innerHTML = `
-      <div class="cart-empty">
-        <div class="empty-icon">🛒</div>
-        <p>Giỏ hàng đang trống</p>
-        <p style="font-size:0.85rem;margin-top:6px;">Thêm sản phẩm hoặc dịch vụ kỹ thuật để bắt đầu</p>
-      </div>`;
+  if (!cart.length) {
+    container.innerHTML = `<div class="cart-empty"><div class="empty-icon">🛒</div><p>Giỏ hàng trống</p></div>`;
     if (summary) summary.style.display = 'none';
     updateCartBadge();
     return;
   }
-
-  // Sync prices from catalog (seller may have changed)
-  const catalog = window.VQConfig.getCatalog();
   cart.forEach((c) => {
-    const live = catalog.find((x) => x.id === c.id);
+    const live = CCLStore.getProductById(c.id);
     if (live) c.price = live.price;
   });
   saveCart(cart);
-
-  const voucherCode = document.getElementById('voucherInput')?.value || '';
-  const totals = window.VQConfig.calcOrderTotals(cart, { code: voucherCode });
-  const platform = window.VQConfig.loadPlatformConfig();
-
+  const voucherCode = $('#voucherInput')?.value || '';
+  const totals = CCLConfig.calcOrderTotals(cart, { code: voucherCode });
   const groups = {};
   cart.forEach((item) => {
-    if (!groups[item.shopId]) groups[item.shopId] = { name: item.shopName, items: [] };
-    groups[item.shopId].items.push(item);
+    if (!groups[item.shopId]) groups[item.shopId] = [];
+    groups[item.shopId].push(item);
   });
-
   let html = '';
   totals.shopBreakdown.forEach((bd) => {
-    const shopItems = groups[bd.shopId]?.items || [];
-    const shipLabel = bd.freeShip
-      ? 'Miễn ship'
-      : `Ship: ${formatVND(bd.ship)}`;
-    const minWarn = !bd.minOrderOk
-      ? `<span style="color:var(--danger);font-size:0.75rem"> · Đơn tối thiểu ${formatVND(bd.minOrder)}</span>`
-      : '';
-    html += `
-      <div class="shop-group">
-        <div class="shop-header">
-          <span>🏪 ${bd.shopName}${minWarn}</span>
-          <span class="ship-badge">${shipLabel}</span>
-        </div>`;
-    shopItems.forEach((item) => {
-      const line = item.price * (item.qty || 1);
-      html += `
-        <div class="cart-item">
-          <div class="cart-item-info">
-            <div class="cart-item-name">${item.type === 'product' ? '📦' : '🛠️'} ${item.name}</div>
-            <div class="cart-item-type">${formatVND(item.price)} × ${item.qty || 1}</div>
-          </div>
-          <div class="qty-control">
-            <button class="qty-btn" onclick="changeQty('${item.id}', -1)">−</button>
-            <span class="qty-val">${item.qty || 1}</span>
-            <button class="qty-btn" onclick="changeQty('${item.id}', 1)">+</button>
-          </div>
-          <div class="cart-item-price">${formatVND(line)}</div>
-          <button class="btn btn-ghost btn-sm" onclick="removeFromCart('${item.id}')" title="Xóa">✕</button>
-        </div>`;
+    const items = groups[bd.shopId] || [];
+    html += `<div class="shop-group"><div class="shop-header"><span>🏪 ${bd.shopName}</span><span class="ship-badge">${bd.freeShip ? 'Miễn ship' : 'Ship ' + formatVND(bd.ship)}</span></div>`;
+    items.forEach((item) => {
+      html += `<div class="cart-item">
+        <div class="cart-item-info"><div class="cart-item-name">${item.name}</div>
+        <div class="cart-item-type">${formatVND(item.price)} × ${item.qty || 1}</div></div>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="changeQty('${item.id}',-1)">−</button>
+          <span class="qty-val">${item.qty || 1}</span>
+          <button class="qty-btn" onclick="changeQty('${item.id}',1)">+</button>
+        </div>
+        <div class="cart-item-price">${formatVND(item.price * (item.qty || 1))}</div>
+        <button class="btn btn-ghost btn-sm" onclick="removeFromCart('${item.id}')">✕</button>
+      </div>`;
     });
     html += '</div>';
   });
-
   container.innerHTML = html;
-
   if (summary) {
     summary.style.display = 'block';
-    document.getElementById('sumItems').textContent = formatVND(totals.totalItems);
-    document.getElementById('sumShip').textContent = formatVND(totals.totalShip);
-    document.getElementById('sumFeeNote').textContent =
-      `Phí sàn ${formatPct(totals.feeRate)} (thu từ đối tác khi giải ngân): ${formatVND(totals.platformFee)}`;
-    const discRow = document.getElementById('sumDiscountRow');
+    $('#sumItems').textContent = formatVND(totals.totalItems);
+    $('#sumShip').textContent = formatVND(totals.totalShip);
+    $('#sumFeeNote').textContent = `Phí sàn ${formatPct(totals.feeRate)} (trừ khi giải ngân): ${formatVND(totals.platformFee)}`;
+    const discRow = $('#sumDiscountRow');
     if (discRow) {
       if (totals.discount > 0) {
         discRow.style.display = 'flex';
-        document.getElementById('sumDiscount').textContent = '−' + formatVND(totals.discount);
-      } else {
-        discRow.style.display = 'none';
-      }
+        $('#sumDiscount').textContent = '−' + formatVND(totals.discount);
+      } else discRow.style.display = 'none';
     }
-    document.getElementById('sumTotal').textContent = formatVND(totals.grandTotal);
-
-    const warn = document.getElementById('checkoutWarn');
-    const btn = document.getElementById('checkoutBtn');
-    if (!totals.canCheckout) {
-      if (warn) {
-        warn.style.display = 'block';
-        warn.textContent = !totals.allAccept
-          ? 'Một gian hàng đang tạm ngưng nhận đơn.'
-          : 'Chưa đạt đơn tối thiểu của gian hàng.';
-      }
-      if (btn) btn.disabled = true;
-    } else {
-      if (warn) warn.style.display = 'none';
-      if (btn) btn.disabled = false;
-    }
+    $('#sumTotal').textContent = formatVND(totals.grandTotal);
+    const btn = $('#checkoutBtn');
+    if (btn) btn.disabled = !totals.canCheckout;
   }
   updateCartBadge();
 }
 
-function applyVoucher() {
-  renderCart();
-  const cart = getCart();
-  const code = document.getElementById('voucherInput')?.value || '';
-  const totals = window.VQConfig.calcOrderTotals(cart, { code });
-  if (code && totals.voucherApplied) {
-    toast(`Áp dụng mã ${totals.voucherApplied}: giảm ${formatVND(totals.discount)}`, 'success');
-  } else if (code) {
-    toast('Mã giảm giá không hợp lệ', 'error');
-  }
-}
+function applyVoucher() { renderCart(); }
 
 async function checkoutOrder() {
-  const token = getToken();
-  if (!token) {
-    toast('Vui lòng đăng nhập trước khi thanh toán', 'error');
-    setTimeout(() => (window.location.href = '/login.html'), 800);
+  const s = getSession();
+  if (!s) {
+    toast('Vui lòng đăng nhập', 'error');
+    setTimeout(() => (location.href = '/login.html'), 600);
     return;
   }
-
+  if (s.role === 'seller') {
+    toast('Tài khoản bán hàng không đặt đơn mua', 'error');
+    return;
+  }
+  if (CCLStore.isBlocked(s.email)) {
+    toast('Tài khoản bị khóa', 'error');
+    return;
+  }
   const cart = getCart();
-  if (!cart.length) {
-    toast('Giỏ hàng trống', 'error');
-    return;
-  }
-
-  const voucherCode = document.getElementById('voucherInput')?.value || '';
-  const totals = window.VQConfig.calcOrderTotals(cart, { code: voucherCode });
+  if (!cart.length) return;
+  const totals = CCLConfig.calcOrderTotals(cart, { code: $('#voucherInput')?.value || '' });
   if (!totals.canCheckout) {
-    toast('Không thể đặt hàng — kiểm tra đơn tối thiểu / gian hàng tạm ngưng', 'error');
+    toast('Không thể đặt hàng', 'error');
     return;
   }
-
-  const bank = document.getElementById('bankSelect')?.value || 'Vietcombank';
-  const btn = document.getElementById('checkoutBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Đang xử lý...';
-  }
-
-  const platform = window.VQConfig.loadPlatformConfig();
-
-  try {
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        cart,
-        bank,
-        platformFeeRate: platform.platformFeeRate,
-        totals,
-        shopSettingsSnapshot: totals.shopBreakdown,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      const orders = JSON.parse(localStorage.getItem(STORAGE_KEYS.orders) || '[]');
-      orders.unshift({
-        id: data.orderId || `ORD-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        cart,
-        bank,
-        totals,
-        message: data.message,
-        status: 'held',
-      });
-      localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders.slice(0, 50)));
-      saveCart([]);
-      renderCart();
-      toast(data.message || 'Đặt hàng thành công!', 'success');
-    } else {
-      toast(data.error || data.message || 'Không thể đặt hàng', 'error');
-    }
-  } catch (err) {
-    toast('Lỗi kết nối. Vui lòng thử lại.', 'error');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Đặt hàng & Thanh toán';
-    }
-  }
-}
-
-function renderUserNav() {
-  const el = document.getElementById('userNav');
-  if (!el) return;
-  const user = getUser();
-  if (user) {
-    const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
-    el.innerHTML = `
-      <div class="nav-user">
-        <div class="avatar">${initial}</div>
-        <span style="font-size:0.9rem;font-weight:600;">${user.name || user.email}</span>
-        ${user.role === 'admin' ? '<a href="/admin.html" class="btn btn-ghost btn-sm">Admin</a>' : ''}
-        ${user.role === 'seller' || user.role === 'admin' ? '<a href="/seller.html" class="btn btn-ghost btn-sm">Gian hàng</a>' : ''}
-        <button class="btn btn-outline btn-sm" onclick="logout()">Đăng xuất</button>
-      </div>`;
-  } else {
-    el.innerHTML = `<a href="/login.html" class="btn btn-primary btn-sm">Đăng nhập</a>`;
-  }
-}
-
-function logout() {
-  clearSession();
-  toast('Đã đăng xuất', 'info');
-  setTimeout(() => (window.location.href = '/'), 400);
-}
-
-let currentFilter = 'all';
-
-function setFilter(f) {
-  currentFilter = f;
-  document.querySelectorAll('.chip').forEach((c) => {
-    c.classList.toggle('active', c.dataset.filter === f);
-  });
-  const q = document.getElementById('searchInput')?.value || '';
-  renderCatalog(f, q);
-}
-
-function onSearch() {
-  const q = document.getElementById('searchInput')?.value || '';
-  renderCatalog(currentFilter, q);
+  const bank = $('#bankSelect')?.value || 'Vietcombank';
+  const order = {
+    id: 'ORD-' + Date.now().toString(36).toUpperCase(),
+    buyerEmail: s.email,
+    buyerName: s.name,
+    cart, totals, bank,
+    status: 'held',
+    createdAt: new Date().toISOString(),
+  };
+  CCLStore.saveOrder(order);
+  saveCart([]);
+  renderCart();
+  toast('Đặt hàng thành công — tiền đang tạm giữ', 'success');
 }
 
 function initHome() {
+  CCLStore.ensureProducts();
   renderUserNav();
   renderCatalog();
   renderCart();
   updateCartBadge();
-  const search = document.getElementById('searchInput');
-  if (search) search.addEventListener('input', onSearch);
-
-  // Show live platform fee in hero if present
-  const feeEl = document.getElementById('liveFeeRate');
-  if (feeEl) {
-    const p = window.VQConfig.loadPlatformConfig();
-    feeEl.textContent = formatPct(p.platformFeeRate);
-  }
+  const search = $('#searchInput');
+  if (search) search.addEventListener('input', () => renderCatalog());
 }
 
+window.formatVND = formatVND;
+window.formatPct = formatPct;
+window.stars = stars;
+window.toast = toast;
+window.logout = logout;
 window.addToCart = addToCart;
 window.changeQty = changeQty;
 window.removeFromCart = removeFromCart;
-window.checkoutOrder = checkoutOrder;
-window.applyVoucher = applyVoucher;
-window.logout = logout;
 window.setFilter = setFilter;
-window.initHome = initHome;
-window.formatVND = formatVND;
-window.formatPct = formatPct;
-window.toast = toast;
-window.getUser = getUser;
-window.getToken = getToken;
-window.setSession = setSession;
-window.clearSession = clearSession;
 window.renderCart = renderCart;
-window.getCart = getCart;
+window.applyVoucher = applyVoucher;
+window.checkoutOrder = checkoutOrder;
+window.initHome = initHome;
+window.getSession = getSession;
+window.requireAuth = requireAuth;
+window.renderUserNav = renderUserNav;
