@@ -1,19 +1,6 @@
 /**
- * chochatluongonline — Auth + OTP email
- *
- * Hỗ trợ 2 nhà cung cấp MIỄN PHÍ (ưu tiên theo thứ tự):
- *
- * 1) BREVO_API_KEY  (Sendinblue) — 300 email/ngày, gửi MỌI địa chỉ
- *    https://app.brevo.com → SMTP & API → API keys
- *    BREVO_API_KEY = xkeysib-...
- *    EMAIL_FROM    = email đã verify trên Brevo (thường là Gmail của bạn)
- *
- * 2) RESEND_API_KEY — 100 email/ngày
- *    Free chưa verify domain: chỉ gửi tới email đăng ký Resend
- *    Đã verify domain: gửi mọi địa chỉ
- *    EMAIL_FROM = Name <onboarding@resend.dev>  hoặc mail domain đã verify
- *
- * Chung: JWT_SECRET, ADMIN_PASSWORD
+ * chochatluongonline — Auth + OTP (Brevo ưu tiên, Resend dự phòng)
+ * Đăng ký OTP · Đăng nhập mật khẩu (admin) · Đăng nhập OTP (mọi thiết bị)
  */
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -33,11 +20,9 @@ const BOOTSTRAP = [
 function hashOtp(code) {
   return crypto.createHash('sha256').update(String(code) + JWT_SECRET).digest('hex');
 }
-
 function genOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
-
 function otpHtml(code) {
   return `
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px">
@@ -49,33 +34,26 @@ function otpHtml(code) {
   `;
 }
 
-/** Brevo — free tier, send to any email after verifying sender */
 async function sendViaBrevo(to, code, purpose) {
   const apiKey = (process.env.BREVO_API_KEY || '').trim();
   if (!apiKey) return null;
-
-  const fromEmail = (process.env.EMAIL_FROM || '').trim();
-  // EMAIL_FROM can be "Name <mail@x.com>" or just "mail@x.com"
-  let senderEmail = fromEmail;
+  const fromEmailRaw = (process.env.EMAIL_FROM || '').trim();
+  let senderEmail = fromEmailRaw;
   let senderName = 'chochatluongonline';
-  const m = fromEmail.match(/^(.*)<([^>]+)>$/);
+  const m = fromEmailRaw.match(/^(.*)<([^>]+)>$/);
   if (m) {
     senderName = m[1].trim() || senderName;
     senderEmail = m[2].trim();
   }
   if (!senderEmail || !senderEmail.includes('@')) {
-    const err = new Error(
-      'Brevo cần EMAIL_FROM là email đã xác minh trên Brevo (vd: ban@gmail.com).'
-    );
+    const err = new Error('EMAIL_FROM phải là email đã verify trên Brevo.');
     err.code = 'BAD_FROM';
     throw err;
   }
-
   const subject =
-    purpose === 'register'
-      ? 'Mã OTP kích hoạt — chochatluongonline'
-      : 'Mã OTP — chochatluongonline';
-
+    purpose === 'login'
+      ? 'Mã OTP đăng nhập — chochatluongonline'
+      : 'Mã OTP kích hoạt — chochatluongonline';
   const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -91,13 +69,12 @@ async function sendViaBrevo(to, code, purpose) {
       textContent: `Mã OTP chochatluongonline: ${code} (hết hạn 10 phút)`,
     }),
   });
-
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    const msg = data.message || data.error || JSON.stringify(data) || `Brevo HTTP ${resp.status}`;
+    const msg = data.message || data.error || `Brevo HTTP ${resp.status}`;
     const err = new Error(
-      String(msg).includes('sender') || String(msg).includes('Sender')
-        ? 'Email người gửi chưa verify trên Brevo. Vào Brevo → Senders → thêm đúng EMAIL_FROM.'
+      String(msg).toLowerCase().includes('sender')
+        ? 'Email gửi chưa verify trên Brevo (Senders).'
         : `Brevo: ${msg}`
     );
     err.code = 'EMAIL_SEND_FAILED';
@@ -107,19 +84,15 @@ async function sendViaBrevo(to, code, purpose) {
   return { provider: 'brevo', data };
 }
 
-/** Resend */
 async function sendViaResend(to, code, purpose) {
   const apiKey = (process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) return null;
-
   let from = (process.env.EMAIL_FROM || '').trim();
   if (!from) from = 'chochatluongonline <onboarding@resend.dev>';
-
   const subject =
-    purpose === 'register'
-      ? 'Mã OTP kích hoạt — chochatluongonline'
-      : 'Mã OTP — chochatluongonline';
-
+    purpose === 'login'
+      ? 'Mã OTP đăng nhập — chochatluongonline'
+      : 'Mã OTP kích hoạt — chochatluongonline';
   const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -134,23 +107,10 @@ async function sendViaResend(to, code, purpose) {
       text: `Mã OTP chochatluongonline: ${code} (hết hạn 10 phút)`,
     }),
   });
-
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
     const msg = data.message || data.error || `Resend HTTP ${resp.status}`;
-    let hint = msg;
-    const lower = String(msg).toLowerCase();
-    if (lower.includes('api key') || resp.status === 401) {
-      hint = 'RESEND_API_KEY sai. Tạo key mới trên resend.com.';
-    } else if (
-      lower.includes('only send testing') ||
-      lower.includes('verify a domain') ||
-      lower.includes('testing emails')
-    ) {
-      hint =
-        'Resend free chưa verify domain chỉ gửi tới email đăng ký Resend. Dùng BREVO_API_KEY (miễn phí, gửi mọi Gmail) hoặc verify domain Resend.';
-    }
-    const err = new Error(hint);
+    const err = new Error(String(msg));
     err.code = 'EMAIL_SEND_FAILED';
     err.detail = data;
     throw err;
@@ -159,28 +119,33 @@ async function sendViaResend(to, code, purpose) {
 }
 
 async function sendOtpEmail(to, code, purpose) {
-  // Ưu tiên Brevo (gửi được mọi email trên free tier)
-  if ((process.env.BREVO_API_KEY || '').trim()) {
-    return await sendViaBrevo(to, code, purpose);
-  }
-  if ((process.env.RESEND_API_KEY || '').trim()) {
-    return await sendViaResend(to, code, purpose);
-  }
-  const err = new Error(
-    'Chưa cấu hình email. Thêm BREVO_API_KEY (khuyến nghị, free gửi mọi mail) hoặc RESEND_API_KEY trên Vercel, rồi Redeploy.'
-  );
+  if ((process.env.BREVO_API_KEY || '').trim()) return await sendViaBrevo(to, code, purpose);
+  if ((process.env.RESEND_API_KEY || '').trim()) return await sendViaResend(to, code, purpose);
+  const err = new Error('Chưa cấu hình BREVO_API_KEY hoặc RESEND_API_KEY.');
   err.code = 'NO_EMAIL_PROVIDER';
   throw err;
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+function sessionToken(user) {
+  return jwt.sign(
+    {
+      sub: user.email,
+      email: user.email,
+      name: user.name || user.email,
+      role: user.role || 'buyer',
+      shopName: user.shopName || null,
+    },
+    JWT_SECRET,
+    { expiresIn: '30d', issuer: 'chochatluongonline' }
+  );
+}
 
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const body = req.body || {};
   const action = body.action;
 
+  // ----- Đăng ký: gửi OTP -----
   if (action === 'send_otp' || action === 'register_otp') {
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim();
@@ -188,74 +153,47 @@ export default async function handler(req, res) {
     const role = ['buyer', 'seller', 'shipper'].includes(body.role) ? body.role : 'buyer';
     const shopName = String(body.shopName || '').trim();
     const phone = String(body.phone || '').trim();
-
     if (!email || !email.includes('@')) {
       return res.status(400).json({ success: false, message: 'Email không hợp lệ' });
     }
     if (!name || password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Họ tên và mật khẩu (tối thiểu 6 ký tự) là bắt buộc',
-      });
+      return res.status(400).json({ success: false, message: 'Họ tên và mật khẩu (≥6 ký tự) bắt buộc' });
     }
     if (role === 'seller' && !shopName) {
       return res.status(400).json({ success: false, message: 'Nhập tên gian hàng' });
     }
-
     const code = genOtp();
     const otpToken = jwt.sign(
-      {
-        purpose: 'register',
-        email,
-        name,
-        role,
-        shopName,
-        phone,
-        p: password,
-        oh: hashOtp(code),
-      },
+      { purpose: 'register', email, name, role, shopName, phone, p: password, oh: hashOtp(code) },
       JWT_SECRET,
       { expiresIn: OTP_TTL_SEC, issuer: 'chochatluongonline' }
     );
-
     try {
       await sendOtpEmail(email, code, 'register');
     } catch (e) {
-      console.error('OTP email error:', e.message, e.detail || '');
-      const status = e.code === 'NO_EMAIL_PROVIDER' ? 503 : 502;
-      return res.status(status).json({
+      console.error('OTP register error:', e.message, e.detail || '');
+      return res.status(e.code === 'NO_EMAIL_PROVIDER' ? 503 : 502).json({
         success: false,
         message: e.message || 'Không gửi được email OTP',
         code: e.code || 'EMAIL_SEND_FAILED',
       });
     }
-
-    return res.status(200).json({
-      success: true,
-      otpSent: true,
-      otpToken,
-      message: 'Đã gửi mã OTP tới email của bạn',
-    });
+    return res.status(200).json({ success: true, otpSent: true, otpToken, message: 'Đã gửi mã OTP tới email' });
   }
 
+  // ----- Đăng ký: xác nhận OTP -----
   if (action === 'verify_otp') {
     const { otpToken, code } = body;
-    if (!otpToken || !code) {
-      return res.status(400).json({ success: false, message: 'Thiếu mã OTP' });
-    }
+    if (!otpToken || !code) return res.status(400).json({ success: false, message: 'Thiếu mã OTP' });
     let payload;
     try {
       payload = jwt.verify(otpToken, JWT_SECRET);
     } catch {
-      return res.status(401).json({
-        success: false,
-        message: 'OTP hết hạn hoặc không hợp lệ. Hãy gửi lại mã.',
-      });
+      return res.status(401).json({ success: false, message: 'OTP hết hạn. Hãy gửi lại mã.' });
     }
     if (payload.purpose !== 'register' || payload.oh !== hashOtp(String(code).trim())) {
       return res.status(401).json({ success: false, message: 'Mã OTP không đúng' });
     }
-
     const user = {
       email: payload.email,
       name: payload.name,
@@ -265,86 +203,106 @@ export default async function handler(req, res) {
       password: payload.p,
       verified: true,
     };
-
-    const token = jwt.sign(
-      {
-        sub: user.email,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        shopName: user.shopName,
-      },
-      JWT_SECRET,
-      { expiresIn: '8h', issuer: 'chochatluongonline' }
-    );
-
     return res.status(200).json({
       success: true,
       verified: true,
-      token,
-      user: {
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        shopName: user.shopName,
-        phone: user.phone,
-        password: user.password,
-        verified: true,
-      },
+      token: sessionToken(user),
+      user: { ...user },
     });
   }
 
+  // ----- Gửi lại OTP (đăng ký hoặc đăng nhập) -----
   if (action === 'resend_otp') {
     const { otpToken } = body;
-    if (!otpToken) {
-      return res.status(400).json({ success: false, message: 'Phiên OTP không hợp lệ' });
-    }
+    if (!otpToken) return res.status(400).json({ success: false, message: 'Phiên OTP không hợp lệ' });
     let payload;
     try {
       payload = jwt.verify(otpToken, JWT_SECRET, { ignoreExpiration: true });
     } catch {
-      return res.status(401).json({
-        success: false,
-        message: 'Không thể gửi lại. Đăng ký lại từ đầu.',
-      });
+      return res.status(401).json({ success: false, message: 'Không thể gửi lại. Thử lại từ đầu.' });
     }
-    if (payload.purpose !== 'register') {
+    if (!['register', 'login'].includes(payload.purpose)) {
       return res.status(400).json({ success: false, message: 'Yêu cầu không hợp lệ' });
     }
-
     const code = genOtp();
-    const newToken = jwt.sign(
-      {
-        purpose: payload.purpose,
-        email: payload.email,
-        name: payload.name,
-        role: payload.role,
-        shopName: payload.shopName,
-        phone: payload.phone,
-        p: payload.p,
-        oh: hashOtp(code),
-      },
+    const newPayload = { ...payload, oh: hashOtp(code) };
+    delete newPayload.iat;
+    delete newPayload.exp;
+    const newToken = jwt.sign(newPayload, JWT_SECRET, {
+      expiresIn: OTP_TTL_SEC,
+      issuer: 'chochatluongonline',
+    });
+    try {
+      await sendOtpEmail(payload.email, code, payload.purpose);
+    } catch (e) {
+      return res.status(502).json({ success: false, message: e.message || 'Không gửi được email' });
+    }
+    return res.status(200).json({ success: true, otpSent: true, otpToken: newToken, message: 'Đã gửi lại OTP' });
+  }
+
+  // ----- Đăng nhập bằng OTP (mọi thiết bị, không phụ thuộc localStorage) -----
+  if (action === 'login_otp') {
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ success: false, message: 'Email không hợp lệ' });
+    }
+    const code = genOtp();
+    const otpToken = jwt.sign(
+      { purpose: 'login', email, oh: hashOtp(code) },
       JWT_SECRET,
       { expiresIn: OTP_TTL_SEC, issuer: 'chochatluongonline' }
     );
-
     try {
-      await sendOtpEmail(payload.email, code, 'register');
+      await sendOtpEmail(email, code, 'login');
     } catch (e) {
-      return res.status(502).json({
+      console.error('OTP login error:', e.message, e.detail || '');
+      return res.status(e.code === 'NO_EMAIL_PROVIDER' ? 503 : 502).json({
         success: false,
-        message: e.message || 'Không gửi được email',
+        message: e.message || 'Không gửi được email OTP',
+        code: e.code || 'EMAIL_SEND_FAILED',
       });
     }
-
     return res.status(200).json({
       success: true,
       otpSent: true,
-      otpToken: newToken,
-      message: 'Đã gửi lại mã OTP',
+      otpToken,
+      message: 'Đã gửi mã OTP đăng nhập tới email',
     });
   }
 
+  if (action === 'verify_login_otp') {
+    const { otpToken, code, name, role, shopName } = body;
+    if (!otpToken || !code) return res.status(400).json({ success: false, message: 'Thiếu mã OTP' });
+    let payload;
+    try {
+      payload = jwt.verify(otpToken, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ success: false, message: 'OTP hết hạn. Hãy gửi lại mã.' });
+    }
+    if (payload.purpose !== 'login' || payload.oh !== hashOtp(String(code).trim())) {
+      return res.status(401).json({ success: false, message: 'Mã OTP không đúng' });
+    }
+    // Hồ sơ: ưu tiên client gửi (từ local nếu còn), không thì buyer mặc định
+    const user = {
+      email: payload.email,
+      name: (name && String(name).trim()) || payload.email.split('@')[0],
+      role: ['buyer', 'seller', 'shipper', 'admin'].includes(role) ? role : 'buyer',
+      shopName: shopName || null,
+      verified: true,
+    };
+    // Admin bootstrap email luôn role admin
+    if (BOOTSTRAP.some((u) => u.email === user.email)) {
+      user.role = 'admin';
+      user.name = BOOTSTRAP.find((u) => u.email === user.email).name;
+    }
+    return res.status(200).json({
+      success: true,
+      token: sessionToken(user),
+      user,
+    });
+  }
+
+  // ----- Đăng nhập mật khẩu (chủ yếu admin bootstrap; user thường dùng OTP) -----
   if (action === 'login') {
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
@@ -353,16 +311,15 @@ export default async function handler(req, res) {
     }
     const user = BOOTSTRAP.find((u) => u.email === email && u.password === password);
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Sai email hoặc mật khẩu' });
+      return res.status(401).json({
+        success: false,
+        message: 'Sai email hoặc mật khẩu. Tài khoản đăng ký hãy dùng Đăng nhập bằng OTP.',
+        hint: 'otp_login',
+      });
     }
-    const token = jwt.sign(
-      { sub: user.email, email: user.email, name: user.name, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '8h', issuer: 'chochatluongonline' }
-    );
     return res.status(200).json({
       success: true,
-      token,
+      token: sessionToken(user),
       role: user.role,
       name: user.name,
       email: user.email,
