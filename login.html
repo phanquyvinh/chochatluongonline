@@ -6,6 +6,16 @@
   <title>Đăng nhập — chochatluongonline</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .auth-tabs button {
+      flex: 1; padding: 10px; border: 1.5px solid var(--border); border-radius: 8px;
+      background: var(--bg-muted); font-weight: 600; cursor: pointer; color: var(--text-secondary);
+    }
+    .auth-tabs button.active {
+      background: var(--primary-soft); border-color: var(--primary); color: var(--primary);
+    }
+  </style>
 </head>
 <body>
   <div class="auth-page">
@@ -15,16 +25,52 @@
         <div class="logo-text">chochatluong<span>online</span></div>
       </a>
       <h1>Đăng nhập</h1>
-      <p class="subtitle">Người mua · Người bán · Vận chuyển</p>
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" autocomplete="username" placeholder="Email">
+      <p class="subtitle">Nên dùng OTP — hoạt động mọi máy</p>
+
+      <div class="auth-tabs">
+        <button type="button" class="active" id="tabOtp" onclick="showTab('otp')">OTP email</button>
+        <button type="button" id="tabPass" onclick="showTab('pass')">Mật khẩu</button>
       </div>
-      <div class="form-group">
-        <label for="password">Mật khẩu</label>
-        <input type="password" id="password" autocomplete="current-password" placeholder="Mật khẩu">
+
+      <!-- OTP login -->
+      <div id="panelOtp">
+        <div id="otpStep1">
+          <div class="form-group">
+            <label for="otpEmail">Email đã đăng ký</label>
+            <input type="email" id="otpEmail" autocomplete="username" placeholder="Email">
+          </div>
+          <button class="btn btn-primary btn-block" id="btnSendLoginOtp" onclick="sendLoginOtp()">Gửi mã OTP</button>
+        </div>
+        <div id="otpStep2" style="display:none">
+          <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:14px;text-align:center">
+            Đã gửi mã tới <strong id="otpEmailLabel"></strong>
+          </p>
+          <div class="form-group">
+            <label>Mã OTP (6 số)</label>
+            <input type="text" id="otpCode" maxlength="6" inputmode="numeric" placeholder="••••••"
+              style="letter-spacing:6px;text-align:center;font-size:1.2rem" autocomplete="one-time-code">
+          </div>
+          <button class="btn btn-primary btn-block" id="btnVerifyLoginOtp" onclick="verifyLoginOtp()">Đăng nhập</button>
+          <button class="btn btn-ghost btn-block" style="margin-top:8px" onclick="sendLoginOtp()">Gửi lại OTP</button>
+        </div>
       </div>
-      <button class="btn btn-primary btn-block" id="loginBtn" onclick="handleLogin()">Đăng nhập</button>
+
+      <!-- Password login -->
+      <div id="panelPass" style="display:none">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" autocomplete="username" placeholder="Email">
+        </div>
+        <div class="form-group">
+          <label for="password">Mật khẩu</label>
+          <input type="password" id="password" autocomplete="current-password" placeholder="Mật khẩu">
+        </div>
+        <button class="btn btn-primary btn-block" id="loginBtn" onclick="handlePasswordLogin()">Đăng nhập</button>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:12px;text-align:center">
+          Tài khoản đăng ký trên web: dùng tab <strong>OTP email</strong> nếu quên mật khẩu hoặc đổi máy.
+        </p>
+      </div>
+
       <p style="text-align:center;margin-top:18px;font-size:0.9rem;color:var(--text-muted)">
         Chưa có tài khoản? <a href="/register.html" style="color:var(--primary);font-weight:600">Đăng ký</a>
       </p>
@@ -37,18 +83,129 @@
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
   <script>
-    async function handleLogin() {
+    let loginOtpToken = '';
+
+    function showTab(which) {
+      document.getElementById('tabOtp').classList.toggle('active', which === 'otp');
+      document.getElementById('tabPass').classList.toggle('active', which === 'pass');
+      document.getElementById('panelOtp').style.display = which === 'otp' ? 'block' : 'none';
+      document.getElementById('panelPass').style.display = which === 'pass' ? 'block' : 'none';
+    }
+
+    function redirectByRole(role) {
+      setTimeout(() => {
+        if (role === 'admin') location.href = '/admin.html';
+        else if (role === 'seller') location.href = '/seller.html';
+        else location.href = '/';
+      }, 400);
+    }
+
+    async function sendLoginOtp() {
+      const email = (document.getElementById('otpEmail').value || '').trim();
+      if (!email) { toast('Nhập email', 'error'); return; }
+      const btn = document.getElementById('btnSendLoginOtp');
+      if (btn) { btn.disabled = true; btn.textContent = 'Đang gửi...'; }
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login_otp', email }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          toast(data.message || 'Không gửi được OTP', 'error');
+          return;
+        }
+        loginOtpToken = data.otpToken;
+        document.getElementById('otpStep1').style.display = 'none';
+        document.getElementById('otpStep2').style.display = 'block';
+        document.getElementById('otpEmailLabel').textContent = email;
+        toast('Đã gửi OTP tới email', 'success');
+      } catch {
+        toast('Lỗi kết nối', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Gửi mã OTP'; }
+      }
+    }
+
+    async function verifyLoginOtp() {
+      const code = (document.getElementById('otpCode').value || '').trim();
+      if (!code || code.length < 6) { toast('Nhập đủ 6 số OTP', 'error'); return; }
+      if (!loginOtpToken) { toast('Hết phiên OTP, gửi lại mã', 'error'); return; }
+
+      const email = (document.getElementById('otpEmail').value || '').trim().toLowerCase();
+      const local = CCLStore.findUserByEmail(email);
+
+      const btn = document.getElementById('btnVerifyLoginOtp');
+      btn.disabled = true;
+      btn.textContent = 'Đang xác nhận...';
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'verify_login_otp',
+            otpToken: loginOtpToken,
+            code,
+            name: local?.name,
+            role: local?.role,
+            shopName: local?.shopName,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          toast(data.message || 'OTP không đúng', 'error');
+          return;
+        }
+        const u = data.user;
+        // Đồng bộ / tạo hồ sơ local để lần sau mật khẩu (nếu còn) vẫn dùng được
+        let stored = CCLStore.findUserByEmail(u.email);
+        if (!stored) {
+          const created = CCLStore.createUser({
+            name: u.name,
+            email: u.email,
+            password: 'otp-only-' + Date.now(),
+            role: u.role,
+            shopName: u.shopName,
+            phone: '',
+          });
+          if (created.user) {
+            CCLStore.updateUser(u.email, { verified: true, shopId: created.user.shopId });
+            stored = CCLStore.findUserByEmail(u.email);
+          }
+        } else {
+          CCLStore.updateUser(u.email, { verified: true, name: u.name || stored.name });
+          stored = CCLStore.findUserByEmail(u.email);
+        }
+        CCLStore.setSession(stored || {
+          email: u.email, name: u.name, role: u.role, shopName: u.shopName, id: 'otp-user',
+        });
+        if (data.token) localStorage.setItem('vq_token', data.token);
+        toast('Đăng nhập thành công', 'success');
+        redirectByRole(u.role || stored?.role || 'buyer');
+      } catch {
+        toast('Lỗi kết nối', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Đăng nhập';
+      }
+    }
+
+    async function handlePasswordLogin() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       if (!email || !password) { toast('Nhập email và mật khẩu', 'error'); return; }
       const btn = document.getElementById('loginBtn');
       btn.disabled = true;
 
-      // Local registry first
       const local = CCLStore.findUserByEmail(email);
       if (local) {
         if (local.blocked) { toast('Tài khoản bị khóa', 'error'); btn.disabled = false; return; }
-        if (local.password !== password) { toast('Sai email hoặc mật khẩu', 'error'); btn.disabled = false; return; }
+        if (local.password !== password) {
+          toast('Sai mật khẩu. Thử tab OTP email.', 'error');
+          btn.disabled = false;
+          return;
+        }
         if (!local.verified) { toast('Email chưa xác nhận OTP', 'error'); btn.disabled = false; return; }
         CCLStore.setSession(local);
         toast('Đăng nhập thành công', 'success');
@@ -56,7 +213,6 @@
         return;
       }
 
-      // Fallback API (legacy admin/seller if still deployed)
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
@@ -76,24 +232,20 @@
           redirectByRole(data.role);
         } else {
           toast(data.message || 'Sai email hoặc mật khẩu', 'error');
+          if (data.hint === 'otp_login') showTab('otp');
         }
       } catch {
-        toast('Sai email hoặc mật khẩu', 'error');
+        toast('Sai email hoặc mật khẩu. Thử đăng nhập bằng OTP.', 'error');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Đăng nhập';
       }
     }
-    function redirectByRole(role) {
-      setTimeout(() => {
-        if (role === 'admin') location.href = '/admin.html';
-        else if (role === 'seller') location.href = '/seller.html';
-        else if (role === 'shipper') location.href = '/';
-        else location.href = '/';
-      }, 400);
-    }
-    document.getElementById('password').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleLogin();
+
+    document.getElementById('otpCode')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') verifyLoginOtp();
+    });
+    document.getElementById('password')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handlePasswordLogin();
     });
   </script>
 </body>
