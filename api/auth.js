@@ -1,15 +1,19 @@
 /**
- * chochatluongonline — Auth + OTP email (Resend)
+ * chochatluongonline — Auth + OTP email
  *
- * Vercel Environment Variables:
- *   RESEND_API_KEY  = re_xxxx
- *   EMAIL_FROM      = chochatluongonline <onboarding@resend.dev>
- *   JWT_SECRET      = chuỗi bí mật
- *   ADMIN_PASSWORD  = mật khẩu admin
+ * Hỗ trợ 2 nhà cung cấp MIỄN PHÍ (ưu tiên theo thứ tự):
  *
- * Resend free (chưa verify domain):
- *   - FROM phải là onboarding@resend.dev
- *   - TO chỉ gửi được tới đúng email đã đăng ký tài khoản Resend
+ * 1) BREVO_API_KEY  (Sendinblue) — 300 email/ngày, gửi MỌI địa chỉ
+ *    https://app.brevo.com → SMTP & API → API keys
+ *    BREVO_API_KEY = xkeysib-...
+ *    EMAIL_FROM    = email đã verify trên Brevo (thường là Gmail của bạn)
+ *
+ * 2) RESEND_API_KEY — 100 email/ngày
+ *    Free chưa verify domain: chỉ gửi tới email đăng ký Resend
+ *    Đã verify domain: gửi mọi địa chỉ
+ *    EMAIL_FROM = Name <onboarding@resend.dev>  hoặc mail domain đã verify
+ *
+ * Chung: JWT_SECRET, ADMIN_PASSWORD
  */
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -34,20 +38,37 @@ function genOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function sendOtpEmail(to, code, purpose) {
-  const apiKey = (process.env.RESEND_API_KEY || '').trim();
-  if (!apiKey) {
-    const err = new Error(
-      'Chưa có RESEND_API_KEY trên Vercel. Settings → Environment Variables → thêm RESEND_API_KEY rồi Redeploy.'
-    );
-    err.code = 'NO_EMAIL_PROVIDER';
-    throw err;
-  }
+function otpHtml(code) {
+  return `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px">
+      <h2 style="color:#0f766e;margin:0 0 12px">chochatluongonline</h2>
+      <p style="color:#334155;line-height:1.5">Mã OTP của bạn:</p>
+      <p style="font-size:32px;font-weight:800;letter-spacing:8px;color:#0f172a;margin:16px 0">${code}</p>
+      <p style="color:#64748b;font-size:14px">Hết hạn sau 10 phút. Không chia sẻ mã này.</p>
+    </div>
+  `;
+}
 
-  // Free tier: must use onboarding@resend.dev until domain is verified
-  let from = (process.env.EMAIL_FROM || '').trim();
-  if (!from) {
-    from = 'chochatluongonline <onboarding@resend.dev>';
+/** Brevo — free tier, send to any email after verifying sender */
+async function sendViaBrevo(to, code, purpose) {
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  if (!apiKey) return null;
+
+  const fromEmail = (process.env.EMAIL_FROM || '').trim();
+  // EMAIL_FROM can be "Name <mail@x.com>" or just "mail@x.com"
+  let senderEmail = fromEmail;
+  let senderName = 'chochatluongonline';
+  const m = fromEmail.match(/^(.*)<([^>]+)>$/);
+  if (m) {
+    senderName = m[1].trim() || senderName;
+    senderEmail = m[2].trim();
+  }
+  if (!senderEmail || !senderEmail.includes('@')) {
+    const err = new Error(
+      'Brevo cần EMAIL_FROM là email đã xác minh trên Brevo (vd: ban@gmail.com).'
+    );
+    err.code = 'BAD_FROM';
+    throw err;
   }
 
   const subject =
@@ -55,14 +76,49 @@ async function sendOtpEmail(to, code, purpose) {
       ? 'Mã OTP kích hoạt — chochatluongonline'
       : 'Mã OTP — chochatluongonline';
 
-  const html = `
-    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px">
-      <h2 style="color:#0f766e;margin:0 0 12px">chochatluongonline</h2>
-      <p style="color:#334155;line-height:1.5">Mã OTP của bạn:</p>
-      <p style="font-size:32px;font-weight:800;letter-spacing:8px;color:#0f172a;margin:16px 0">${code}</p>
-      <p style="color:#64748b;font-size:14px">Hết hạn sau 10 phút. Không chia sẻ mã này với ai.</p>
-    </div>
-  `;
+  const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: to }],
+      subject,
+      htmlContent: otpHtml(code),
+      textContent: `Mã OTP chochatluongonline: ${code} (hết hạn 10 phút)`,
+    }),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const msg = data.message || data.error || JSON.stringify(data) || `Brevo HTTP ${resp.status}`;
+    const err = new Error(
+      String(msg).includes('sender') || String(msg).includes('Sender')
+        ? 'Email người gửi chưa verify trên Brevo. Vào Brevo → Senders → thêm đúng EMAIL_FROM.'
+        : `Brevo: ${msg}`
+    );
+    err.code = 'EMAIL_SEND_FAILED';
+    err.detail = data;
+    throw err;
+  }
+  return { provider: 'brevo', data };
+}
+
+/** Resend */
+async function sendViaResend(to, code, purpose) {
+  const apiKey = (process.env.RESEND_API_KEY || '').trim();
+  if (!apiKey) return null;
+
+  let from = (process.env.EMAIL_FROM || '').trim();
+  if (!from) from = 'chochatluongonline <onboarding@resend.dev>';
+
+  const subject =
+    purpose === 'register'
+      ? 'Mã OTP kích hoạt — chochatluongonline'
+      : 'Mã OTP — chochatluongonline';
 
   const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -74,39 +130,47 @@ async function sendOtpEmail(to, code, purpose) {
       from,
       to: [to],
       subject,
-      html,
+      html: otpHtml(code),
       text: `Mã OTP chochatluongonline: ${code} (hết hạn 10 phút)`,
     }),
   });
 
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    // Resend error shapes: { statusCode, message, name } or { error }
-    const msg =
-      data.message ||
-      data.error ||
-      (typeof data === 'string' ? data : null) ||
-      `Resend lỗi HTTP ${resp.status}`;
-
+    const msg = data.message || data.error || `Resend HTTP ${resp.status}`;
     let hint = msg;
     const lower = String(msg).toLowerCase();
     if (lower.includes('api key') || resp.status === 401) {
-      hint = 'RESEND_API_KEY sai hoặc hết hạn. Tạo key mới trên resend.com rồi cập nhật Vercel + Redeploy.';
-    } else if (lower.includes('domain') || lower.includes('from')) {
+      hint = 'RESEND_API_KEY sai. Tạo key mới trên resend.com.';
+    } else if (
+      lower.includes('only send testing') ||
+      lower.includes('verify a domain') ||
+      lower.includes('testing emails')
+    ) {
       hint =
-        'EMAIL_FROM chưa hợp lệ. Dùng: chochatluongonline <onboarding@resend.dev> (chưa verify domain).';
-    } else if (lower.includes('only send testing') || lower.includes('verify a domain') || lower.includes('testing emails')) {
-      hint =
-        'Tài khoản Resend free chỉ gửi được tới email đã đăng ký Resend. Hãy đăng ký Resend bằng đúng Gmail người nhận OTP, hoặc verify domain.';
+        'Resend free chưa verify domain chỉ gửi tới email đăng ký Resend. Dùng BREVO_API_KEY (miễn phí, gửi mọi Gmail) hoặc verify domain Resend.';
     }
-
     const err = new Error(hint);
     err.code = 'EMAIL_SEND_FAILED';
     err.detail = data;
-    err.rawMessage = msg;
     throw err;
   }
-  return data;
+  return { provider: 'resend', data };
+}
+
+async function sendOtpEmail(to, code, purpose) {
+  // Ưu tiên Brevo (gửi được mọi email trên free tier)
+  if ((process.env.BREVO_API_KEY || '').trim()) {
+    return await sendViaBrevo(to, code, purpose);
+  }
+  if ((process.env.RESEND_API_KEY || '').trim()) {
+    return await sendViaResend(to, code, purpose);
+  }
+  const err = new Error(
+    'Chưa cấu hình email. Thêm BREVO_API_KEY (khuyến nghị, free gửi mọi mail) hoặc RESEND_API_KEY trên Vercel, rồi Redeploy.'
+  );
+  err.code = 'NO_EMAIL_PROVIDER';
+  throw err;
 }
 
 export default async function handler(req, res) {
@@ -157,7 +221,7 @@ export default async function handler(req, res) {
     try {
       await sendOtpEmail(email, code, 'register');
     } catch (e) {
-      console.error('OTP email error:', e.message, e.rawMessage || '', e.detail || '');
+      console.error('OTP email error:', e.message, e.detail || '');
       const status = e.code === 'NO_EMAIL_PROVIDER' ? 503 : 502;
       return res.status(status).json({
         success: false,
@@ -179,7 +243,6 @@ export default async function handler(req, res) {
     if (!otpToken || !code) {
       return res.status(400).json({ success: false, message: 'Thiếu mã OTP' });
     }
-
     let payload;
     try {
       payload = jwt.verify(otpToken, JWT_SECRET);
@@ -189,7 +252,6 @@ export default async function handler(req, res) {
         message: 'OTP hết hạn hoặc không hợp lệ. Hãy gửi lại mã.',
       });
     }
-
     if (payload.purpose !== 'register' || payload.oh !== hashOtp(String(code).trim())) {
       return res.status(401).json({ success: false, message: 'Mã OTP không đúng' });
     }
@@ -269,7 +331,6 @@ export default async function handler(req, res) {
     try {
       await sendOtpEmail(payload.email, code, 'register');
     } catch (e) {
-      console.error('Resend OTP error:', e.message);
       return res.status(502).json({
         success: false,
         message: e.message || 'Không gửi được email',
@@ -290,12 +351,10 @@ export default async function handler(req, res) {
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Thiếu thông tin' });
     }
-
     const user = BOOTSTRAP.find((u) => u.email === email && u.password === password);
     if (!user) {
       return res.status(401).json({ success: false, message: 'Sai email hoặc mật khẩu' });
     }
-
     const token = jwt.sign(
       { sub: user.email, email: user.email, name: user.name, role: user.role },
       JWT_SECRET,
