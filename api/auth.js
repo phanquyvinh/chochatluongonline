@@ -1,14 +1,15 @@
 /**
- * chochatluongonline — Auth + OTP email
+ * chochatluongonline — Auth + OTP email (Resend)
  *
- * Env (Vercel → Settings → Environment Variables):
- *   RESEND_API_KEY   = re_xxxx          (bắt buộc để gửi mail)
- *   EMAIL_FROM       = chochatluongonline <onboarding@resend.dev>
- *                      (domain riêng sau khi verify trên Resend)
- *   JWT_SECRET       = chuỗi bí mật dài
- *   ADMIN_PASSWORD   = mật khẩu admin bootstrap
+ * Vercel Environment Variables:
+ *   RESEND_API_KEY  = re_xxxx
+ *   EMAIL_FROM      = chochatluongonline <onboarding@resend.dev>
+ *   JWT_SECRET      = chuỗi bí mật
+ *   ADMIN_PASSWORD  = mật khẩu admin
  *
- * OTP không lưu DB: mã hóa trong otpToken (JWT, hết hạn 10 phút).
+ * Resend free (chưa verify domain):
+ *   - FROM phải là onboarding@resend.dev
+ *   - TO chỉ gửi được tới đúng email đã đăng ký tài khoản Resend
  */
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -34,16 +35,20 @@ function genOtp() {
 }
 
 async function sendOtpEmail(to, code, purpose) {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = (process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) {
-    const err = new Error('Chưa cấu hình RESEND_API_KEY trên Vercel');
+    const err = new Error(
+      'Chưa có RESEND_API_KEY trên Vercel. Settings → Environment Variables → thêm RESEND_API_KEY rồi Redeploy.'
+    );
     err.code = 'NO_EMAIL_PROVIDER';
     throw err;
   }
 
-  const from =
-    process.env.EMAIL_FROM ||
-    'chochatluongonline <onboarding@resend.dev>';
+  // Free tier: must use onboarding@resend.dev until domain is verified
+  let from = (process.env.EMAIL_FROM || '').trim();
+  if (!from) {
+    from = 'chochatluongonline <onboarding@resend.dev>';
+  }
 
   const subject =
     purpose === 'register'
@@ -55,7 +60,7 @@ async function sendOtpEmail(to, code, purpose) {
       <h2 style="color:#0f766e;margin:0 0 12px">chochatluongonline</h2>
       <p style="color:#334155;line-height:1.5">Mã OTP của bạn:</p>
       <p style="font-size:32px;font-weight:800;letter-spacing:8px;color:#0f172a;margin:16px 0">${code}</p>
-      <p style="color:#64748b;font-size:14px">Hết hạn sau 10 phút. Không chia sẻ mã này.</p>
+      <p style="color:#64748b;font-size:14px">Hết hạn sau 10 phút. Không chia sẻ mã này với ai.</p>
     </div>
   `;
 
@@ -76,10 +81,29 @@ async function sendOtpEmail(to, code, purpose) {
 
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    const msg = data?.message || data?.error || `Resend HTTP ${resp.status}`;
-    const err = new Error(msg);
+    // Resend error shapes: { statusCode, message, name } or { error }
+    const msg =
+      data.message ||
+      data.error ||
+      (typeof data === 'string' ? data : null) ||
+      `Resend lỗi HTTP ${resp.status}`;
+
+    let hint = msg;
+    const lower = String(msg).toLowerCase();
+    if (lower.includes('api key') || resp.status === 401) {
+      hint = 'RESEND_API_KEY sai hoặc hết hạn. Tạo key mới trên resend.com rồi cập nhật Vercel + Redeploy.';
+    } else if (lower.includes('domain') || lower.includes('from')) {
+      hint =
+        'EMAIL_FROM chưa hợp lệ. Dùng: chochatluongonline <onboarding@resend.dev> (chưa verify domain).';
+    } else if (lower.includes('only send testing') || lower.includes('verify a domain') || lower.includes('testing emails')) {
+      hint =
+        'Tài khoản Resend free chỉ gửi được tới email đã đăng ký Resend. Hãy đăng ký Resend bằng đúng Gmail người nhận OTP, hoặc verify domain.';
+    }
+
+    const err = new Error(hint);
     err.code = 'EMAIL_SEND_FAILED';
     err.detail = data;
+    err.rawMessage = msg;
     throw err;
   }
   return data;
@@ -93,7 +117,6 @@ export default async function handler(req, res) {
   const body = req.body || {};
   const action = body.action;
 
-  // ---------- Gửi OTP đăng ký ----------
   if (action === 'send_otp' || action === 'register_otp') {
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim();
@@ -106,7 +129,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Email không hợp lệ' });
     }
     if (!name || password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Họ tên và mật khẩu (tối thiểu 6 ký tự) là bắt buộc' });
+      return res.status(400).json({
+        success: false,
+        message: 'Họ tên và mật khẩu (tối thiểu 6 ký tự) là bắt buộc',
+      });
     }
     if (role === 'seller' && !shopName) {
       return res.status(400).json({ success: false, message: 'Nhập tên gian hàng' });
@@ -121,7 +147,6 @@ export default async function handler(req, res) {
         role,
         shopName,
         phone,
-        // password chỉ trong token tạm — production nên hash trước
         p: password,
         oh: hashOtp(code),
       },
@@ -132,19 +157,12 @@ export default async function handler(req, res) {
     try {
       await sendOtpEmail(email, code, 'register');
     } catch (e) {
-      console.error('OTP email error:', e.message, e.detail || '');
-      if (e.code === 'NO_EMAIL_PROVIDER') {
-        return res.status(503).json({
-          success: false,
-          message:
-            'Hệ thống chưa cấu hình gửi email. Vào Vercel → Environment Variables thêm RESEND_API_KEY.',
-          code: 'NO_EMAIL_PROVIDER',
-        });
-      }
-      return res.status(502).json({
+      console.error('OTP email error:', e.message, e.rawMessage || '', e.detail || '');
+      const status = e.code === 'NO_EMAIL_PROVIDER' ? 503 : 502;
+      return res.status(status).json({
         success: false,
-        message: 'Không gửi được email OTP. Kiểm tra RESEND_API_KEY / EMAIL_FROM hoặc hộp thư spam.',
-        code: 'EMAIL_SEND_FAILED',
+        message: e.message || 'Không gửi được email OTP',
+        code: e.code || 'EMAIL_SEND_FAILED',
       });
     }
 
@@ -156,7 +174,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // ---------- Xác nhận OTP ----------
   if (action === 'verify_otp') {
     const { otpToken, code } = body;
     if (!otpToken || !code) {
@@ -167,7 +184,10 @@ export default async function handler(req, res) {
     try {
       payload = jwt.verify(otpToken, JWT_SECRET);
     } catch {
-      return res.status(401).json({ success: false, message: 'OTP hết hạn hoặc không hợp lệ. Hãy gửi lại mã.' });
+      return res.status(401).json({
+        success: false,
+        message: 'OTP hết hạn hoặc không hợp lệ. Hãy gửi lại mã.',
+      });
     }
 
     if (payload.purpose !== 'register' || payload.oh !== hashOtp(String(code).trim())) {
@@ -206,13 +226,12 @@ export default async function handler(req, res) {
         role: user.role,
         shopName: user.shopName,
         phone: user.phone,
-        password: user.password, // client lưu local registry (hash sau khi có DB)
+        password: user.password,
         verified: true,
       },
     });
   }
 
-  // ---------- Gửi lại OTP ----------
   if (action === 'resend_otp') {
     const { otpToken } = body;
     if (!otpToken) {
@@ -220,10 +239,12 @@ export default async function handler(req, res) {
     }
     let payload;
     try {
-      // cho phép đọc cả token sắp hết hạn để lấy email
       payload = jwt.verify(otpToken, JWT_SECRET, { ignoreExpiration: true });
     } catch {
-      return res.status(401).json({ success: false, message: 'Không thể gửi lại. Đăng ký lại từ đầu.' });
+      return res.status(401).json({
+        success: false,
+        message: 'Không thể gửi lại. Đăng ký lại từ đầu.',
+      });
     }
     if (payload.purpose !== 'register') {
       return res.status(400).json({ success: false, message: 'Yêu cầu không hợp lệ' });
@@ -231,7 +252,16 @@ export default async function handler(req, res) {
 
     const code = genOtp();
     const newToken = jwt.sign(
-      { ...payload, oh: hashOtp(code), iat: undefined, exp: undefined },
+      {
+        purpose: payload.purpose,
+        email: payload.email,
+        name: payload.name,
+        role: payload.role,
+        shopName: payload.shopName,
+        phone: payload.phone,
+        p: payload.p,
+        oh: hashOtp(code),
+      },
       JWT_SECRET,
       { expiresIn: OTP_TTL_SEC, issuer: 'chochatluongonline' }
     );
@@ -242,9 +272,7 @@ export default async function handler(req, res) {
       console.error('Resend OTP error:', e.message);
       return res.status(502).json({
         success: false,
-        message: e.code === 'NO_EMAIL_PROVIDER'
-          ? 'Chưa cấu hình RESEND_API_KEY trên Vercel'
-          : 'Không gửi được email. Thử lại sau.',
+        message: e.message || 'Không gửi được email',
       });
     }
 
@@ -256,7 +284,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // ---------- Login ----------
   if (action === 'login') {
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
