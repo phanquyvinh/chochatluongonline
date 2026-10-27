@@ -3,29 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VinhQuay Market — Chợ kỹ thuật & linh kiện thông minh</title>
-  <meta name="description" content="Sàn thương mại kết nối sản phẩm linh kiện và dịch vụ kỹ thuật. Escrow an toàn, phí sàn linh hoạt, seller tự set giá & ship.">
+  <title>chochatluongonline</title>
+  <meta name="description" content="chochatluongonline — Phan Quý Vinh">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .empty-msg { color: var(--text-muted); grid-column: 1/-1; padding: 20px 0; }
+    .card-img img { border-radius: 0; }
+    a.card-img, a.card-title, a.card-shop { text-decoration: none; color: inherit; }
+    a.card-title:hover { color: var(--primary); }
+  </style>
 </head>
 <body>
   <header class="header">
     <div class="container header-inner">
       <a href="/" class="logo">
-        <div class="logo-mark">VQ</div>
-        <div class="logo-text">Vinh<span>Quay</span></div>
+        <div class="logo-mark">CCL</div>
+        <div class="logo-text">chochatluong<span>online</span></div>
       </a>
-
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input type="search" id="searchInput" placeholder="Tìm linh kiện, dịch vụ sửa chữa, lắp đặt..." autocomplete="off">
+        <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ..." autocomplete="off">
       </div>
-
       <div class="header-actions">
-        <a href="#cart" class="btn btn-ghost btn-icon cart-btn" title="Giỏ hàng">
-          🛒
+        <a href="#cart" class="btn btn-ghost btn-icon cart-btn">🛒
           <span class="badge-count" data-cart-count style="display:none">0</span>
         </a>
         <div id="userNav"></div>
@@ -33,65 +35,14 @@
     </div>
   </header>
 
-  <section class="hero">
-    <div class="container hero-inner">
-      <div>
-        <h1>Chợ kỹ thuật an toàn<br>cho thợ & nhà bán hàng</h1>
-        <p>Mua linh kiện, đặt dịch vụ sửa chữa — tiền tạm giữ escrow. Phí sàn <strong id="liveFeeRate">1%</strong>. Mỗi gian hàng tự set giá & phí ship.</p>
-        <div class="hero-stats">
-          <div class="hero-stat"><strong id="heroFee">1%</strong><span>Phí sàn (Admin chỉnh)</span></div>
-          <div class="hero-stat"><strong>Escrow</strong><span>Tạm giữ an toàn</span></div>
-          <div class="hero-stat"><strong>Seller</strong><span>Tự set giá & ship</span></div>
-        </div>
-      </div>
-      <div class="hero-card">
-        <h3>Vì sao tin tưởng VinhQuay?</h3>
-        <div class="trust-list">
-          <div class="trust-item"><span class="dot"></span> Tiền khóa tạm đến khi khách xác nhận nhận hàng</div>
-          <div class="trust-item"><span class="dot"></span> Giải ngân khi khớp lệnh / nghiệm thu kỹ thuật</div>
-          <div class="trust-item"><span class="dot"></span> Phí sàn linh hoạt — Admin đổi theo thị trường</div>
-          <div class="trust-item"><span class="dot"></span> Đối tác tự tùy chỉnh giá bán & phí ship gian hàng</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <main class="container">
+  <main class="container" style="padding-top:24px">
     <section class="section">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon">ℹ️</span> Cách hoạt động</h2>
-      </div>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <h4>Chọn & đặt hàng</h4>
-          <p>Giá & ship do từng gian hàng tự set. Gộp đơn cùng shop để tối ưu.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h4>Thanh toán escrow</h4>
-          <p>Tiền tạm giữ trung gian — chưa chuyển cho shop.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <h4>Nhận hàng / nghiệm thu</h4>
-          <p>Xác nhận đã nhận hoặc biên bản kỹ thuật khớp.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <h4>Giải ngân − phí sàn</h4>
-          <p>Chuyển tiền đối tác, trừ % phí sàn do Admin cấu hình.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-header">
-        <h2 class="section-title"><span class="icon">📦</span> Sản phẩm linh kiện</h2>
+        <h2 class="section-title"><span class="icon">📦</span> Sản phẩm</h2>
         <div class="filters">
           <button class="chip active" data-filter="all" onclick="setFilter('all')">Tất cả</button>
-          <button class="chip" data-filter="product" onclick="setFilter('product')">Chỉ sản phẩm</button>
-          <button class="chip" data-filter="service" onclick="setFilter('service')">Chỉ dịch vụ</button>
+          <button class="chip" data-filter="product" onclick="setFilter('product')">Sản phẩm</button>
+          <button class="chip" data-filter="service" onclick="setFilter('service')">Dịch vụ</button>
           <button class="chip" data-filter="linh-kien" onclick="setFilter('linh-kien')">Linh kiện</button>
           <button class="chip" data-filter="sua-chua" onclick="setFilter('sua-chua')">Sửa chữa</button>
           <button class="chip" data-filter="lap-dat" onclick="setFilter('lap-dat')">Lắp đặt</button>
@@ -102,47 +53,44 @@
 
     <section class="section">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon">🛠️</span> Dịch vụ kỹ thuật</h2>
+        <h2 class="section-title"><span class="icon">🛠️</span> Dịch vụ</h2>
       </div>
       <div class="grid" id="servicesGrid"></div>
     </section>
 
     <section class="section" id="cart">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon">🛍️</span> Giỏ hàng thông minh</h2>
+        <h2 class="section-title"><span class="icon">🛍️</span> Giỏ hàng</h2>
       </div>
       <div class="cart-section">
         <div id="cartContainer"></div>
         <div id="cartSummary" style="display:none">
           <div class="cart-summary">
-            <div class="summary-row"><span>Tạm tính sản phẩm / dịch vụ</span><span id="sumItems">0 đ</span></div>
-            <div class="summary-row"><span>Phí vận chuyển (theo từng shop)</span><span id="sumShip">0 đ</span></div>
-            <div class="summary-row" id="sumDiscountRow" style="display:none;color:var(--success)"><span>Giảm giá voucher</span><span id="sumDiscount">0 đ</span></div>
-            <div class="summary-row" style="font-size:0.85rem;color:var(--text-muted)"><span id="sumFeeNote">Phí sàn (thu từ đối tác)</span><span></span></div>
-            <div class="summary-row total"><span>Tổng thanh toán</span><span id="sumTotal">0 đ</span></div>
+            <div class="summary-row"><span>Tạm tính</span><span id="sumItems">0 đ</span></div>
+            <div class="summary-row"><span>Vận chuyển</span><span id="sumShip">0 đ</span></div>
+            <div class="summary-row" id="sumDiscountRow" style="display:none;color:var(--success)"><span>Giảm giá</span><span id="sumDiscount">0 đ</span></div>
+            <div class="summary-row" style="font-size:0.85rem;color:var(--text-muted)"><span id="sumFeeNote"></span><span></span></div>
+            <div class="summary-row total"><span>Tổng</span><span id="sumTotal">0 đ</span></div>
           </div>
-          <p id="checkoutWarn" style="display:none;color:var(--danger);font-size:0.9rem;margin-top:10px"></p>
           <div class="checkout-row">
             <div class="form-field">
-              <label>Mã giảm giá</label>
+              <label>Mã giảm</label>
               <div style="display:flex;gap:8px">
-                <input type="text" id="voucherInput" placeholder="VD: VINHQUAY10" style="min-width:140px">
+                <input type="text" id="voucherInput" placeholder="Nhập mã" style="min-width:120px">
                 <button type="button" class="btn btn-outline btn-sm" onclick="applyVoucher()">Áp dụng</button>
               </div>
             </div>
             <div class="form-field">
-              <label>Ngân hàng liên kết</label>
+              <label>Ngân hàng</label>
               <select id="bankSelect">
-                <option value="Vietcombank">Vietcombank</option>
-                <option value="Techcombank">Techcombank</option>
-                <option value="MBBank">MB Bank</option>
-                <option value="VPBank">VPBank</option>
-                <option value="BIDV">BIDV</option>
+                <option>Vietcombank</option>
+                <option>Techcombank</option>
+                <option>MB Bank</option>
+                <option>VPBank</option>
+                <option>BIDV</option>
               </select>
             </div>
-            <button class="btn btn-accent" id="checkoutBtn" onclick="checkoutOrder()" style="min-width:200px">
-              Đặt hàng & Thanh toán
-            </button>
+            <button class="btn btn-accent" id="checkoutBtn" onclick="checkoutOrder()">Thanh toán</button>
           </div>
         </div>
       </div>
@@ -150,51 +98,15 @@
   </main>
 
   <footer class="footer">
-    <div class="container">
-      <div class="footer-inner">
-        <div class="footer-brand">
-          <a href="/" class="logo">
-            <div class="logo-mark">VQ</div>
-            <div class="logo-text">Vinh<span>Quay</span></div>
-          </a>
-          <p>Sàn linh kiện & dịch vụ kỹ thuật. Escrow · Phí sàn linh hoạt · Seller tự set giá & ship.</p>
-        </div>
-        <div>
-          <h4>Dành cho đối tác</h4>
-          <ul>
-            <li><a href="/seller.html">Kênh người bán — tự set giá</a></li>
-            <li><a href="/login.html">Đăng nhập đối tác</a></li>
-            <li><a href="/admin.html">Cấu hình thị trường (Admin)</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4>Hỗ trợ</h4>
-          <ul>
-            <li><a href="tel:0975898828">Hotline: 0975 898 828</a></li>
-            <li><a href="mailto:phanquyvinh@gmail.com">phanquyvinh@gmail.com</a></li>
-            <li><a href="#">Hướng dẫn escrow</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <span>© 2026 VinhQuay Market · Phan Quý Vinh</span>
-        <span>Seller tự set giá · Admin chỉnh phí sàn theo thị trường</span>
-      </div>
+    <div class="container footer-bottom" style="border:0;margin:0;padding:0;justify-content:space-between">
+      <span>© chochatluongonline</span>
+      <span>Hotline 0975 898 828</span>
     </div>
   </footer>
 
   <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
   <script src="js/app.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      initHome();
-      const p = VQConfig.loadPlatformConfig();
-      const fee = formatPct(p.platformFeeRate);
-      const live = document.getElementById('liveFeeRate');
-      const hero = document.getElementById('heroFee');
-      if (live) live.textContent = fee;
-      if (hero) hero.textContent = fee;
-    });
-  </script>
+  <script>document.addEventListener('DOMContentLoaded', initHome);</script>
 </body>
 </html>

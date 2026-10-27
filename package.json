@@ -1,13 +1,10 @@
 {
-  "name": "vinhquay-market",
-  "version": "2.0.0",
-  "description": "VinhQuay Market — sàn linh kiện & dịch vụ kỹ thuật, phí sàn 1%, escrow. Bản quyền Phan Quý Vinh.",
-  "main": "index.html",
+  "name": "chochatluongonline",
+  "version": "3.0.0",
+  "description": "chochatluongonline — Phan Quý Vinh",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2"
   },
-  "engines": {
-    "node": ">=18"
-  }
+  "engines": { "node": ">=18" }
 }

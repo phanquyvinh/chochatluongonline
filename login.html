@@ -3,57 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng nhập — VinhQuay Market</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <title>Đăng nhập — chochatluongonline</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="auth-page">
     <div class="auth-card">
-      <a href="/" class="logo">
-        <div class="logo-mark">VQ</div>
-        <div class="logo-text">Vinh<span>Quay</span></div>
+      <a href="/" class="logo" style="justify-content:center">
+        <div class="logo-mark">CCL</div>
+        <div class="logo-text">chochatluong<span>online</span></div>
       </a>
-      <h1>Đăng nhập hệ thống</h1>
-      <p class="subtitle">Admin · Đối tác bán hàng · Người mua</p>
-
+      <h1>Đăng nhập</h1>
+      <p class="subtitle">Người mua · Người bán · Vận chuyển</p>
       <div class="form-group">
         <label for="email">Email</label>
-        <input type="email" id="email" placeholder="email@domain.com" autocomplete="username">
+        <input type="email" id="email" autocomplete="username" placeholder="Email">
       </div>
       <div class="form-group">
         <label for="password">Mật khẩu</label>
-        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        <input type="password" id="password" autocomplete="current-password" placeholder="Mật khẩu">
       </div>
       <button class="btn btn-primary btn-block" id="loginBtn" onclick="handleLogin()">Đăng nhập</button>
-
-      <div class="auth-hint">
-        <strong>Tài khoản demo (đổi mật khẩu trên production):</strong><br>
-        Admin: <code>phanquyvinh@gmail.com</code> / <code>Beliveme76@</code><br>
-        Seller: <code>shopmau@gmail.com</code> / <code>Shop123@</code>
-      </div>
-
-      <p style="text-align:center;margin-top:18px;font-size:0.85rem;">
-        <a href="/" style="color:var(--primary);font-weight:600;">← Về trang chủ</a>
+      <p style="text-align:center;margin-top:18px;font-size:0.9rem;color:var(--text-muted)">
+        Chưa có tài khoản? <a href="/register.html" style="color:var(--primary);font-weight:600">Đăng ký</a>
+      </p>
+      <p style="text-align:center;margin-top:10px;font-size:0.85rem">
+        <a href="/" style="color:var(--text-muted)">← Trang chủ</a>
       </p>
     </div>
   </div>
-
   <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
   <script src="js/app.js"></script>
   <script>
     async function handleLogin() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      if (!email || !password) {
-        toast('Vui lòng nhập email và mật khẩu', 'error');
-        return;
-      }
+      if (!email || !password) { toast('Nhập email và mật khẩu', 'error'); return; }
       const btn = document.getElementById('loginBtn');
       btn.disabled = true;
-      btn.textContent = 'Đang xác thực...';
 
+      // Local registry first
+      const local = CCLStore.findUserByEmail(email);
+      if (local) {
+        if (local.blocked) { toast('Tài khoản bị khóa', 'error'); btn.disabled = false; return; }
+        if (local.password !== password) { toast('Sai email hoặc mật khẩu', 'error'); btn.disabled = false; return; }
+        if (!local.verified) { toast('Email chưa xác nhận OTP', 'error'); btn.disabled = false; return; }
+        CCLStore.setSession(local);
+        toast('Đăng nhập thành công', 'success');
+        redirectByRole(local.role);
+        return;
+      }
+
+      // Fallback API (legacy admin/seller if still deployed)
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
@@ -62,28 +65,33 @@
         });
         const data = await res.json();
         if (data.success) {
-          setSession(data.token, {
+          CCLStore.setSession({
             email: data.email || email,
-            name: data.name,
+            name: data.name || email,
             role: data.role,
+            shopId: data.role === 'seller' ? 's101' : null,
+            id: 'api-user',
           });
           toast('Đăng nhập thành công', 'success');
-          setTimeout(() => {
-            if (data.role === 'admin') window.location.href = '/admin.html';
-            else if (data.role === 'seller') window.location.href = '/seller.html';
-            else window.location.href = '/';
-          }, 500);
+          redirectByRole(data.role);
         } else {
-          toast(data.message || 'Sai tài khoản hoặc mật khẩu', 'error');
+          toast(data.message || 'Sai email hoặc mật khẩu', 'error');
         }
-      } catch (e) {
-        toast('Không kết nối được máy chủ', 'error');
+      } catch {
+        toast('Sai email hoặc mật khẩu', 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Đăng nhập';
       }
     }
-
+    function redirectByRole(role) {
+      setTimeout(() => {
+        if (role === 'admin') location.href = '/admin.html';
+        else if (role === 'seller') location.href = '/seller.html';
+        else if (role === 'shipper') location.href = '/';
+        else location.href = '/';
+      }, 400);
+    }
     document.getElementById('password').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleLogin();
     });
