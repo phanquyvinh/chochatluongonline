@@ -58,6 +58,32 @@
           </div>
         </div>
 
+        
+        <div class="panel">
+          <h2 class="panel-title">Đối tác & khách hàng</h2>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">Email, SĐT, địa chỉ — chỉ admin xem. Đối tác tự sửa SĐT/địa chỉ tại Hồ sơ.</p>
+          <div class="filters" style="margin-bottom:12px">
+            <button class="chip active" type="button" onclick="filterUsers('all', this)">Tất cả</button>
+            <button class="chip" type="button" onclick="filterUsers('seller', this)">Shop</button>
+            <button class="chip" type="button" onclick="filterUsers('shipper', this)">Ship</button>
+            <button class="chip" type="button" onclick="filterUsers('buyer', this)">Khách</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table users-table">
+              <thead>
+                <tr>
+                  <th>Họ tên</th>
+                  <th>Vai trò</th>
+                  <th>Email</th>
+                  <th>SĐT</th>
+                  <th>Địa chỉ</th>
+                </tr>
+              </thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="panel">
           <h2 class="panel-title">Chặn tài khoản</h2>
           <div class="form-row">
@@ -100,6 +126,7 @@
       refreshStats();
       renderReturns();
       renderBlocks();
+      renderUsers();
     });
 
     function refreshStats() {
@@ -171,6 +198,38 @@
           <td>${b.type}</td>
           <td>${b.reason}</td>
           <td><button class="btn btn-ghost btn-sm" onclick="unblock('${b.email}')">Gỡ</button></td>
+        </tr>
+      `).join('');
+    }
+
+
+    let userRoleFilter = 'all';
+    const roleLabel = { buyer: 'Khách', seller: 'Shop', shipper: 'Ship', admin: 'Admin' };
+
+    function filterUsers(role, btn) {
+      userRoleFilter = role;
+      document.querySelectorAll('.panel .chip').forEach((c) => c.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderUsers();
+    }
+
+    function renderUsers() {
+      let users = CCLStore.getUsers() || [];
+      if (userRoleFilter !== 'all') users = users.filter((u) => u.role === userRoleFilter);
+      users = users.slice().sort((a, b) => (a.role || '').localeCompare(b.role || '') || (a.name || '').localeCompare(b.name || ''));
+      const body = document.getElementById('usersBody');
+      if (!body) return;
+      if (!users.length) {
+        body.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center">Chưa có tài khoản đăng ký trên thiết bị này</td></tr>';
+        return;
+      }
+      body.innerHTML = users.map((u) => `
+        <tr>
+          <td><strong>${u.name || '—'}</strong>${u.shopName ? '<br><span style="color:var(--text-muted);font-size:0.8rem">🏪 ' + u.shopName + '</span>' : ''}</td>
+          <td><span class="role-pill role-${u.role || 'buyer'}">${roleLabel[u.role] || u.role}</span></td>
+          <td style="word-break:break-all">${u.email || ''}</td>
+          <td>${u.phone || '<span style="color:var(--text-muted)">—</span>'}</td>
+          <td style="max-width:200px">${u.address || '<span style="color:var(--text-muted)">—</span>'}</td>
         </tr>
       `).join('');
     }

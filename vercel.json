@@ -6,7 +6,8 @@
     { "source": "/register", "destination": "/register.html" },
     { "source": "/orders", "destination": "/orders.html" },
     { "source": "/product", "destination": "/product.html" },
-    { "source": "/shop", "destination": "/shop.html" }
+    { "source": "/shop", "destination": "/shop.html" },
+    { "source": "/profile", "destination": "/profile.html" }
   ],
   "headers": [
     {
