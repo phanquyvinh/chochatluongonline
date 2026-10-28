@@ -24,12 +24,16 @@
       </a>
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ, shop..." autocomplete="off">
+        <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ, shop..." data-i18n-placeholder="searchPlaceholder" autocomplete="off">
       </div>
       <div class="header-actions">
         <a href="#cart" class="btn btn-ghost btn-icon cart-btn">🛒
           <span class="badge-count" data-cart-count style="display:none">0</span>
         </a>
+        <select id="langSelect" class="lang-select" onchange="setLang(this.value)" aria-label="Language">
+          <option value="vi">VI</option>
+          <option value="en">EN</option>
+        </select>
         <div id="userNav"></div>
       </div>
     </div>
@@ -44,32 +48,32 @@
     </div>
     <section class="section">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon">📦</span> Sản phẩm</h2>
+        <h2 class="section-title"><span class="icon"">📦</span> <span data-i18n="products">Sản phẩm</span></h2>
         <div class="filters">
-          <button class="chip active" data-filter="all" onclick="setFilter('all')">Tất cả</button>
-          <button class="chip" data-filter="product" onclick="setFilter('product')">Sản phẩm</button>
-          <button class="chip" data-filter="service" onclick="setFilter('service')">Dịch vụ</button>
-          <button class="chip" data-filter="linh-kien" onclick="setFilter('linh-kien')">Linh kiện</button>
-          <button class="chip" data-filter="sua-chua" onclick="setFilter('sua-chua')">Sửa chữa</button>
-          <button class="chip" data-filter="lap-dat" onclick="setFilter('lap-dat')">Lắp đặt</button>
+          <button class="chip active" data-filter="all" onclick="setFilter('all')" data-i18n="all">Tất cả</button>
+          <button class="chip" data-filter="product" onclick="setFilter('product')" data-i18n="products">Sản phẩm</button>
+          <button class="chip" data-filter="service" onclick="setFilter('service')" data-i18n="services">Dịch vụ</button>
+          <button class="chip" data-filter="linh-kien" onclick="setFilter('linh-kien')" data-i18n="parts">Linh kiện</button>
+          <button class="chip" data-filter="sua-chua" onclick="setFilter('sua-chua')" data-i18n="repair">Sửa chữa</button>
+          <button class="chip" data-filter="lap-dat" onclick="setFilter('lap-dat')" data-i18n="install">Lắp đặt</button>
         </div>
       </div>
       <div class="filter-bar">
-        <input type="number" id="filterMinPrice" placeholder="Giá từ" min="0" step="10000" style="width:110px">
-        <input type="number" id="filterMaxPrice" placeholder="Giá đến" min="0" step="10000" style="width:110px">
+        <input type="number" id="filterMinPrice" placeholder="Giá từ" data-i18n-placeholder="priceFrom" min="0" step="10000" style="width:110px">
+        <input type="number" id="filterMaxPrice" placeholder="Giá đến" data-i18n-placeholder="priceTo" min="0" step="10000" style="width:110px">
         <select id="filterMinRating" class="sort-select">
-          <option value="0">Mọi đánh giá</option>
+          <option value="0" data-i18n-option="anyRating">Mọi đánh giá</option>
           <option value="3">Từ 3★</option>
           <option value="4">Từ 4★</option>
           <option value="4.5">Từ 4.5★</option>
         </select>
         <select id="filterSort" class="sort-select">
-          <option value="default">Phù hợp nhất</option>
-          <option value="price_asc">Giá thấp → cao</option>
-          <option value="price_desc">Giá cao → thấp</option>
-          <option value="rating">Đánh giá cao</option>
-          <option value="sold">Bán chạy</option>
-          <option value="newest">Mới nhất</option>
+          <option value="default" data-i18n-option="sortDefault">Phù hợp nhất</option>
+          <option value="price_asc" data-i18n-option="sortPriceAsc">Giá thấp → cao</option>
+          <option value="price_desc" data-i18n-option="sortPriceDesc">Giá cao → thấp</option>
+          <option value="rating" data-i18n-option="sortRating">Đánh giá cao</option>
+          <option value="sold" data-i18n-option="sortSold">Bán chạy</option>
+          <option value="newest" data-i18n-option="sortNewest">Mới nhất</option>
         </select>
         <span id="resultCount" style="font-size:0.85rem;color:var(--text-muted)"></span>
       </div>
@@ -78,35 +82,35 @@
 
     <section class="section">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon">🛠️</span> Dịch vụ</h2>
+        <h2 class="section-title"><span class="icon"">🛠️</span> <span data-i18n="services">Dịch vụ</span></h2>
       </div>
       <div class="grid" id="servicesGrid"></div>
     </section>
 
     <section class="section" id="cart">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon">🛍️</span> Giỏ hàng</h2>
+        <h2 class="section-title"><span class="icon"">🛍️</span> <span data-i18n="cart">Giỏ hàng</span></h2>
       </div>
       <div class="cart-section">
         <div id="cartContainer"></div>
         <div id="cartSummary" style="display:none">
           <div class="cart-summary">
-            <div class="summary-row"><span>Tạm tính</span><span id="sumItems">0 đ</span></div>
-            <div class="summary-row"><span>Vận chuyển</span><span id="sumShip">0 đ</span></div>
-            <div class="summary-row" id="sumDiscountRow" style="display:none;color:var(--success)"><span>Giảm giá</span><span id="sumDiscount">0 đ</span></div>
+            <div class="summary-row"><span data-i18n="subtotal">Tạm tính</span><span id="sumItems">0 đ</span></div>
+            <div class="summary-row"><span data-i18n="shipping">Vận chuyển</span><span id="sumShip">0 đ</span></div>
+            <div class="summary-row" id="sumDiscountRow" style="display:none;color:var(--success)"><span data-i18n="discount">Giảm giá</span><span id="sumDiscount">0 đ</span></div>
             <div class="summary-row" style="font-size:0.85rem;color:var(--text-muted)"><span id="sumFeeNote"></span><span></span></div>
-            <div class="summary-row total"><span>Tổng</span><span id="sumTotal">0 đ</span></div>
+            <div class="summary-row total"><span data-i18n="total">Tổng</span><span id="sumTotal">0 đ</span></div>
           </div>
           <div class="checkout-row">
             <div class="form-field">
-              <label>Mã giảm</label>
+              <label data-i18n="voucher">Mã giảm</label>
               <div style="display:flex;gap:8px">
                 <input type="text" id="voucherInput" placeholder="Nhập mã" style="min-width:120px">
-                <button type="button" class="btn btn-outline btn-sm" onclick="applyVoucher()">Áp dụng</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="applyVoucher()" data-i18n="apply">Áp dụng</button>
               </div>
             </div>
             <div class="form-field">
-              <label>Ngân hàng</label>
+              <label data-i18n="bank">Ngân hàng</label>
               <select id="bankSelect">
                 <option>Vietcombank</option>
                 <option>Techcombank</option>
@@ -115,7 +119,7 @@
                 <option>BIDV</option>
               </select>
             </div>
-            <button class="btn btn-accent" id="checkoutBtn" onclick="checkoutOrder()">Thanh toán</button>
+            <button class="btn btn-accent" id="checkoutBtn" onclick="checkoutOrder()" data-i18n="checkout">Thanh toán</button>
           </div>
         </div>
       </div>
