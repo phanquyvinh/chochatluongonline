@@ -143,7 +143,6 @@ function renderUserNav() {
   if (!el) return;
   const s = getSession();
   const tt = (k, fb) => (typeof t === 'function' ? t(k) : fb);
-  const langHtml = (window.CCL_I18N && CCL_I18N.langSwitcherHtml) ? CCL_I18N.langSwitcherHtml() : '';
   if (s) {
     const initial = (s.name || s.email || 'U').charAt(0).toUpperCase();
     let links = '';
@@ -152,15 +151,18 @@ function renderUserNav() {
     if (s.role === 'buyer' || s.role === 'admin') links += '<a href="/orders.html" class="btn btn-ghost btn-sm">' + tt('orders', 'Đơn hàng') + '</a>';
     links += '<a href="/profile.html" class="btn btn-ghost btn-sm">' + tt('profile', 'Hồ sơ') + '</a>';
     links += '<button class="btn btn-outline btn-sm" onclick="logout()">' + tt('logout', 'Thoát') + '</button>';
-    el.innerHTML = '<div class="nav-user">' + langHtml +
+    el.innerHTML = '<div class="nav-user">' +
       '<div class="avatar">' + initial + '</div>' +
-      '<span style="font-size:0.9rem;font-weight:600">' + (s.name || s.email) + '</span>' +
+      '<span class="nav-name">' + (s.name || s.email) + '</span>' +
       links + '</div>';
   } else {
-    el.innerHTML = langHtml +
+    el.innerHTML =
       '<a href="/login.html" class="btn btn-login-cta">' + tt('login', 'Đăng nhập') + '</a>' +
       '<a href="/register.html" class="btn btn-register-cta">' + tt('register', 'Đăng ký') + '</a>';
   }
+  // sync lang select if present
+  const sel = document.getElementById('langSelect');
+  if (sel && typeof getLang === 'function') sel.value = getLang();
 }
 
 function productCard(item) {
