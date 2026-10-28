@@ -7,6 +7,35 @@ const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 function formatVND(n) {
   return Number(n || 0).toLocaleString('vi-VN') + ' đ';
 }
+/** Format số tiền khi gõ: 1000000 → 1.000.000 */
+function formatPriceTyping(raw) {
+  const digits = String(raw || '').replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function parseVNDInput(str) {
+  return Number(String(str || '').replace(/[^\d]/g, '')) || 0;
+}
+function bindPriceInput(el) {
+  if (!el || el.dataset.priceBound) return;
+  el.dataset.priceBound = '1';
+  el.addEventListener('input', () => {
+    const start = el.selectionStart;
+    const before = el.value;
+    const digitsBefore = before.slice(0, start).replace(/[^\d]/g, '').length;
+    el.value = formatPriceTyping(el.value);
+    // restore cursor roughly after same digit count
+    let pos = 0, count = 0;
+    while (pos < el.value.length && count < digitsBefore) {
+      if (/\d/.test(el.value[pos])) count++;
+      pos++;
+    }
+    try { el.setSelectionRange(pos, pos); } catch (_) {}
+  });
+  el.addEventListener('blur', () => {
+    el.value = formatPriceTyping(el.value);
+  });
+}
 function formatPct(rate) {
   return (Number(rate || 0) * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
 }
@@ -115,8 +144,9 @@ function renderUserNav() {
   const s = getSession();
   if (s) {
     const initial = (s.name || s.email || 'U').charAt(0).toUpperCase();
+    const langHtml = (window.CCL_I18N && CCL_I18N.langSwitcherHtml) ? CCL_I18N.langSwitcherHtml() : '';
     el.innerHTML = `
-      <div class="nav-user">
+      <div class="nav-user">${langHtml}
         <div class="avatar">${initial}</div>
         <span style="font-size:0.9rem;font-weight:600">${s.name || s.email}</span>
         ${s.role === 'admin' ? '<a href="/admin.html" class="btn btn-ghost btn-sm">Quản trị</a>' : ''}
@@ -126,9 +156,11 @@ function renderUserNav() {
         <button class="btn btn-outline btn-sm" onclick="logout()">Thoát</button>
       </div>`;
   } else {
+    const langHtml = (window.CCL_I18N && CCL_I18N.langSwitcherHtml) ? CCL_I18N.langSwitcherHtml() : '';
     el.innerHTML = `
-      <a href="/login.html" class="btn btn-ghost btn-sm">Đăng nhập</a>
-      <a href="/register.html" class="btn btn-primary btn-sm">Đăng ký</a>`;
+      ${langHtml}
+      <a href="/login.html" class="btn btn-ghost btn-sm" data-i18n="login">Đăng nhập</a>
+      <a href="/register.html" class="btn btn-primary btn-sm" data-i18n="register">Đăng ký</a>`;
   }
 }
 
@@ -329,6 +361,9 @@ function initHome() {
 }
 
 window.formatVND = formatVND;
+window.formatPriceTyping = formatPriceTyping;
+window.parseVNDInput = parseVNDInput;
+window.bindPriceInput = bindPriceInput;
 window.formatPct = formatPct;
 window.stars = stars;
 window.toast = toast;

@@ -136,6 +136,16 @@ function saveProduct(product) {
   return list.find((p) => p.id === (product.id || list[list.length - 1].id));
 }
 
+function hardDeleteProduct(id, sellerEmail) {
+  let list = ensureProducts();
+  const p = list.find((x) => x.id === id);
+  if (!p) return false;
+  if (sellerEmail && p.sellerEmail && p.sellerEmail !== sellerEmail) return false;
+  list = list.filter((x) => x.id !== id);
+  write(K.products, list);
+  return true;
+}
+
 function deleteProduct(id, sellerEmail) {
   const list = ensureProducts();
   const p = list.find((x) => x.id === id);
@@ -402,7 +412,7 @@ function reportBomb(email) {
 
 window.CCLStore = {
   K, uid, ensureProducts, getProducts, getProductById, getProductsByShop,
-  saveProduct, deleteProduct,
+  saveProduct, deleteProduct, hardDeleteProduct,
   getUsers, findUserByEmail, createUser, updateUser,
   setOtp, verifyOtp,
   getSession, setSession, clearSession,
