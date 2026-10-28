@@ -200,20 +200,25 @@
       btn.disabled = true;
 
       const local = CCLStore.findUserByEmail(email);
-      if (local) {
-        if (local.blocked) { toast('Tài khoản bị khóa', 'error'); btn.disabled = false; return; }
-        if (local.password !== password) {
-          toast('Sai mật khẩu. Thử tab OTP email.', 'error');
+      if (local && local.blocked) {
+        toast('Tài khoản bị khóa', 'error');
+        btn.disabled = false;
+        return;
+      }
+      // Mật khẩu khớp local → vào luôn
+      if (local && local.password === password) {
+        if (!local.verified) {
+          toast('Email chưa xác nhận OTP', 'error');
           btn.disabled = false;
           return;
         }
-        if (!local.verified) { toast('Email chưa xác nhận OTP', 'error'); btn.disabled = false; return; }
         CCLStore.setSession(local);
         toast('Đăng nhập thành công', 'success');
         redirectByRole(local.role);
         return;
       }
 
+      // Không khớp local (hoặc chưa có) → thử API (admin bootstrap)
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
@@ -222,13 +227,34 @@
         });
         const data = await res.json();
         if (data.success) {
-          CCLStore.setSession({
+          // Đồng bộ admin/user API vào local để lần sau ổn định
+          if (local) {
+            CCLStore.updateUser(email, {
+              password: password,
+              role: data.role,
+              name: data.name || local.name,
+              verified: true,
+            });
+          } else {
+            const created = CCLStore.createUser({
+              name: data.name || email,
+              email: email,
+              password: password,
+              role: data.role || 'admin',
+            });
+            if (created.user) CCLStore.updateUser(email, { verified: true, role: data.role });
+            if (created.error && created.error.includes('đăng ký')) {
+              CCLStore.updateUser(email, { password: password, role: data.role, verified: true, name: data.name });
+            }
+          }
+          const synced = CCLStore.findUserByEmail(email);
+          CCLStore.setSession(synced || {
             email: data.email || email,
             name: data.name || email,
             role: data.role,
-            shopId: data.role === 'seller' ? 's101' : null,
             id: 'api-user',
           });
+          if (data.token) localStorage.setItem('vq_token', data.token);
           toast('Đăng nhập thành công', 'success');
           redirectByRole(data.role);
         } else {
