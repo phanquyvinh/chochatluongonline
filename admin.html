@@ -26,6 +26,17 @@
 
     <div class="dash-body">
       <div class="container">
+        
+        <div class="panel">
+          <h2 class="panel-title">Ảnh banner trang chủ</h2>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">Dán URL ảnh (3 ô). Để trống ô nào thì ẩn ảnh đó.</p>
+          <div class="form-field" style="margin-bottom:10px"><label>Ảnh lớn (trái)</label><input type="url" id="heroImg1" placeholder="https://..."></div>
+          <div class="form-field" style="margin-bottom:10px"><label>Ảnh phụ 1</label><input type="url" id="heroImg2" placeholder="https://..."></div>
+          <div class="form-field" style="margin-bottom:10px"><label>Ảnh phụ 2</label><input type="url" id="heroImg3" placeholder="https://..."></div>
+          <div class="form-field" style="margin-bottom:10px"><label>Dòng mô tả banner</label><input type="text" id="heroTagline" placeholder="Chợ linh kiện · dịch vụ kỹ thuật"></div>
+          <button class="btn btn-primary" onclick="saveHero()">Lưu ảnh banner</button>
+        </div>
+
         <div class="panel">
           <h2 class="panel-title">Tài chính</h2>
           <div class="stats-grid">
@@ -125,10 +136,37 @@
       document.getElementById('cfg_escrow').value = c.escrowHoldDays;
       document.getElementById('cfg_return').value = c.returnWindowDays || 3;
       refreshStats();
+      loadHeroForm();
       renderReturns();
       renderBlocks();
       renderUsers();
     });
+
+
+    function loadHeroForm() {
+      const c = CCLConfig.loadPlatformConfig();
+      const imgs = c.heroImages || [];
+      const a = document.getElementById('heroImg1');
+      const b = document.getElementById('heroImg2');
+      const d = document.getElementById('heroImg3');
+      const tag = document.getElementById('heroTagline');
+      if (a) a.value = imgs[0] || '';
+      if (b) b.value = imgs[1] || '';
+      if (d) d.value = imgs[2] || '';
+      if (tag) tag.value = c.heroTagline || '';
+    }
+    function saveHero() {
+      const imgs = [
+        document.getElementById('heroImg1').value.trim(),
+        document.getElementById('heroImg2').value.trim(),
+        document.getElementById('heroImg3').value.trim(),
+      ];
+      CCLConfig.savePlatformConfig({
+        heroImages: imgs,
+        heroTagline: document.getElementById('heroTagline').value.trim(),
+      }, getSession()?.name || 'admin');
+      toast('Đã lưu ảnh banner', 'success');
+    }
 
     function refreshStats() {
       const c = CCLConfig.loadPlatformConfig();
