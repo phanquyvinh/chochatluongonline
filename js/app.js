@@ -142,49 +142,48 @@ function renderUserNav() {
   const el = $('#userNav');
   if (!el) return;
   const s = getSession();
+  const tt = (k, fb) => (typeof t === 'function' ? t(k) : fb);
+  const langHtml = (window.CCL_I18N && CCL_I18N.langSwitcherHtml) ? CCL_I18N.langSwitcherHtml() : '';
   if (s) {
     const initial = (s.name || s.email || 'U').charAt(0).toUpperCase();
-    const langHtml = (window.CCL_I18N && CCL_I18N.langSwitcherHtml) ? CCL_I18N.langSwitcherHtml() : '';
-    el.innerHTML = `
-      <div class="nav-user">${langHtml}
-        <div class="avatar">${initial}</div>
-        <span style="font-size:0.9rem;font-weight:600">${s.name || s.email}</span>
-        ${s.role === 'admin' ? '<a href="/admin.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('admin'):'Quản trị'}</a>' : ''}
-        ${s.role === 'seller' ? '<a href="/seller.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('seller'):'Gian hàng'}</a>' : ''}
-        ${s.role === 'buyer' || s.role === 'admin' ? '<a href="/orders.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('orders'):'Đơn hàng'}</a>' : ''}
-        <a href="/profile.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('profile'):'Hồ sơ'}</a>
-        <button class="btn btn-outline btn-sm" onclick="logout()">${typeof t==='function'?t('logout'):'Thoát'}</button>
-      </div>`;
+    let links = '';
+    if (s.role === 'admin') links += '<a href="/admin.html" class="btn btn-ghost btn-sm">' + tt('admin', 'Quản trị') + '</a>';
+    if (s.role === 'seller') links += '<a href="/seller.html" class="btn btn-ghost btn-sm">' + tt('seller', 'Gian hàng') + '</a>';
+    if (s.role === 'buyer' || s.role === 'admin') links += '<a href="/orders.html" class="btn btn-ghost btn-sm">' + tt('orders', 'Đơn hàng') + '</a>';
+    links += '<a href="/profile.html" class="btn btn-ghost btn-sm">' + tt('profile', 'Hồ sơ') + '</a>';
+    links += '<button class="btn btn-outline btn-sm" onclick="logout()">' + tt('logout', 'Thoát') + '</button>';
+    el.innerHTML = '<div class="nav-user">' + langHtml +
+      '<div class="avatar">' + initial + '</div>' +
+      '<span style="font-size:0.9rem;font-weight:600">' + (s.name || s.email) + '</span>' +
+      links + '</div>';
   } else {
-    const langHtml = (window.CCL_I18N && CCL_I18N.langSwitcherHtml) ? CCL_I18N.langSwitcherHtml() : '';
-    el.innerHTML = `
-      ${langHtml}
-      <a href="/login.html" class="btn btn-ghost btn-sm" data-i18n="login">Đăng nhập</a>
-      <a href="/register.html" class="btn btn-primary btn-sm" data-i18n="register">Đăng ký</a>`;
+    el.innerHTML = langHtml +
+      '<a href="/login.html" class="btn btn-ghost btn-sm">' + tt('login', 'Đăng nhập') + '</a>' +
+      '<a href="/register.html" class="btn btn-primary btn-sm">' + tt('register', 'Đăng ký') + '</a>';
   }
 }
 
 function productCard(item) {
-  const shop = CCLConfig.loadShopSettings(item.shopId);
+  const tt = (k, fb) => (typeof t === 'function' ? t(k) : fb);
   const img = (item.images && item.images[0])
-    ? `<img src="${item.images[0]}" alt="" style="width:100%;height:100%;object-fit:cover">`
-    : `<span style="font-size:2.4rem">${item.emoji || '📦'}</span>`;
+    ? '<img src="' + item.images[0] + '" alt="" style="width:100%;height:100%;object-fit:cover">'
+    : '<span style="font-size:2.4rem">' + (item.emoji || '📦') + '</span>';
   const rc = item.reviewsCount || 0;
-  return `
-  <article class="card">
-    <a href="/product.html?id=${item.id}" class="card-img">${img}
-      <span class="card-badge ${item.type === 'product' ? 'badge-product' : 'badge-service'}">${item.type === 'product' ? (typeof t==='function'?t('product'):'Sản phẩm') : (typeof t==='function'?t('service'):'Dịch vụ')}</span>
-    </a>
-    <div class="card-body">
-      <a href="/shop.html?id=${item.shopId}" class="card-shop">🏪 ${item.shopName}</a>
-      <a href="/product.html?id=${item.id}" class="card-title">${item.name}</a>
-      <div class="card-meta"><span>${stars(item.rating)} ${item.rating || 0}</span><span>·</span><span>${rc} ${typeof t==='function'?t('reviews'):'đánh giá'}</span></div>
-      <div class="card-price">
-        <div class="price">${formatVND(item.price)}</div>
-        <button class="btn btn-primary btn-sm" onclick="event.preventDefault();addToCart('${item.id}')">${typeof t==='function'?t('add'):'Thêm'}</button>
-      </div>
-    </div>
-  </article>`;
+  const badge = item.type === 'product' ? tt('product', 'Sản phẩm') : tt('service', 'Dịch vụ');
+  const badgeClass = item.type === 'product' ? 'badge-product' : 'badge-service';
+  return (
+    '<article class="card">' +
+      '<a href="/product.html?id=' + item.id + '" class="card-img">' + img +
+        '<span class="card-badge ' + badgeClass + '">' + badge + '</span></a>' +
+      '<div class="card-body">' +
+        '<a href="/shop.html?id=' + item.shopId + '" class="card-shop">🏪 ' + (item.shopName || '') + '</a>' +
+        '<a href="/product.html?id=' + item.id + '" class="card-title">' + item.name + '</a>' +
+        '<div class="card-meta"><span>' + stars(item.rating) + ' ' + (item.rating || 0) + '</span><span>·</span><span>' + rc + ' ' + tt('reviews', 'đánh giá') + '</span></div>' +
+        '<div class="card-price">' +
+          '<div class="price">' + formatVND(item.price) + '</div>' +
+          '<button class="btn btn-primary btn-sm" onclick="event.preventDefault();addToCart(\'' + item.id + '\')">' + tt('add', 'Thêm') + '</button>' +
+        '</div></div></article>'
+  );
 }
 
 let currentFilter = 'all';
@@ -233,7 +232,7 @@ function renderCatalog() {
 
   const products = items.filter((i) => i.type === 'product');
   const services = items.filter((i) => i.type === 'service');
-  const empty = `<p class="empty-msg">${typeof t==='function'?t('noResults'):'Không tìm thấy kết quả phù hợp'}</p>`;
+  const empty = '<p class="empty-msg">' + (typeof t==='function'?t('noResults'):'Không tìm thấy kết quả phù hợp') + '</p>';
   pg.innerHTML = products.length ? products.map(productCard).join('') : empty;
   sg.innerHTML = services.length ? services.map(productCard).join('') : empty;
   const countEl = $('#resultCount');
@@ -266,7 +265,7 @@ function renderCart() {
   let html = '';
   totals.shopBreakdown.forEach((bd) => {
     const items = groups[bd.shopId] || [];
-    html += `<div class="shop-group"><div class="shop-header"><span>🏪 ${bd.shopName}</span><span class="ship-badge">${bd.freeShip ? (typeof t==='function'?t('freeShip'):'Miễn ship') : 'Ship ' + formatVND(bd.ship)}</span></div>`;
+    html += `<div class="shop-group"><div class="shop-header"><span>🏪 ${bd.shopName}</span><span class="ship-badge">${bd.freeShip ? (typeof t==='function'?t('freeShip'):'Miễn ship') : ('Ship ' + formatVND(bd.ship))}</span></div>`;
     items.forEach((item) => {
       html += `<div class="cart-item">
         <div class="cart-item-info"><div class="cart-item-name">${item.name}</div>
