@@ -145,22 +145,46 @@ function renderUserNav() {
   const tt = (k, fb) => (typeof t === 'function' ? t(k) : fb);
   if (s) {
     const initial = (s.name || s.email || 'U').charAt(0).toUpperCase();
-    let links = '';
-    if (s.role === 'admin') links += '<a href="/admin.html" class="btn btn-ghost btn-sm">' + tt('admin', 'Quản trị') + '</a>';
-    if (s.role === 'seller') links += '<a href="/seller.html" class="btn btn-ghost btn-sm">' + tt('seller', 'Gian hàng') + '</a>';
-    if (s.role === 'buyer' || s.role === 'admin') links += '<a href="/orders.html" class="btn btn-ghost btn-sm">' + tt('orders', 'Đơn hàng') + '</a>';
-    links += '<a href="/profile.html" class="btn btn-ghost btn-sm">' + tt('profile', 'Hồ sơ') + '</a>';
-    links += '<button class="btn btn-outline btn-sm" onclick="logout()">' + tt('logout', 'Thoát') + '</button>';
-    el.innerHTML = '<div class="nav-user">' +
-      '<div class="avatar">' + initial + '</div>' +
-      '<span class="nav-name">' + (s.name || s.email) + '</span>' +
-      links + '</div>';
+    const name = s.name || s.email || '';
+    let items = '';
+    if (s.role === 'admin') items += '<a href="/admin.html">' + tt('admin', 'Quản trị') + '</a>';
+    if (s.role === 'seller') items += '<a href="/seller.html">' + tt('seller', 'Gian hàng') + '</a>';
+    if (s.role === 'buyer' || s.role === 'admin') items += '<a href="/orders.html">' + tt('orders', 'Đơn hàng') + '</a>';
+    items += '<a href="/profile.html">' + tt('profile', 'Hồ sơ') + '</a>';
+    items += '<button type="button" onclick="logout()">' + tt('logout', 'Thoát') + '</button>';
+
+    // Desktop: full links | Mobile: avatar menu
+    let desk = '';
+    if (s.role === 'admin') desk += '<a href="/admin.html" class="btn btn-ghost btn-sm">' + tt('admin', 'Quản trị') + '</a>';
+    if (s.role === 'seller') desk += '<a href="/seller.html" class="btn btn-ghost btn-sm">' + tt('seller', 'Gian hàng') + '</a>';
+    if (s.role === 'buyer' || s.role === 'admin') desk += '<a href="/orders.html" class="btn btn-ghost btn-sm">' + tt('orders', 'Đơn hàng') + '</a>';
+    desk += '<a href="/profile.html" class="btn btn-ghost btn-sm">' + tt('profile', 'Hồ sơ') + '</a>';
+    desk += '<button class="btn btn-outline btn-sm" onclick="logout()">' + tt('logout', 'Thoát') + '</button>';
+
+    el.innerHTML =
+      '<div class="nav-user nav-user-desktop">' +
+        '<div class="avatar">' + initial + '</div>' +
+        '<span class="nav-name">' + name + '</span>' + desk +
+      '</div>' +
+      '<button type="button" class="account-menu-btn" id="accountMenuBtn" aria-label="Menu">' +
+        '<div class="avatar">' + initial + '</div><span>' + (name.split(' ').pop() || name).slice(0, 10) + '</span>' +
+      '</button>' +
+      '<div class="account-dropdown" id="accountDropdown">' + items + '</div>';
+
+    const btn = document.getElementById('accountMenuBtn');
+    const dd = document.getElementById('accountDropdown');
+    if (btn && dd) {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        dd.classList.toggle('open');
+      };
+      document.addEventListener('click', () => dd.classList.remove('open'), { once: true });
+    }
   } else {
     el.innerHTML =
       '<a href="/login.html" class="btn btn-login-cta">' + tt('login', 'Đăng nhập') + '</a>' +
       '<a href="/register.html" class="btn btn-register-cta">' + tt('register', 'Đăng ký') + '</a>';
   }
-  // sync lang select if present
   const sel = document.getElementById('langSelect');
   if (sel && typeof getLang === 'function') sel.value = getLang();
 }
