@@ -149,11 +149,11 @@ function renderUserNav() {
       <div class="nav-user">${langHtml}
         <div class="avatar">${initial}</div>
         <span style="font-size:0.9rem;font-weight:600">${s.name || s.email}</span>
-        ${s.role === 'admin' ? '<a href="/admin.html" class="btn btn-ghost btn-sm">Quản trị</a>' : ''}
-        ${s.role === 'seller' ? '<a href="/seller.html" class="btn btn-ghost btn-sm">Gian hàng</a>' : ''}
-        ${s.role === 'buyer' || s.role === 'admin' ? '<a href="/orders.html" class="btn btn-ghost btn-sm">Đơn hàng</a>' : ''}
-        <a href="/profile.html" class="btn btn-ghost btn-sm">Hồ sơ</a>
-        <button class="btn btn-outline btn-sm" onclick="logout()">Thoát</button>
+        ${s.role === 'admin' ? '<a href="/admin.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('admin'):'Quản trị'}</a>' : ''}
+        ${s.role === 'seller' ? '<a href="/seller.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('seller'):'Gian hàng'}</a>' : ''}
+        ${s.role === 'buyer' || s.role === 'admin' ? '<a href="/orders.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('orders'):'Đơn hàng'}</a>' : ''}
+        <a href="/profile.html" class="btn btn-ghost btn-sm">${typeof t==='function'?t('profile'):'Hồ sơ'}</a>
+        <button class="btn btn-outline btn-sm" onclick="logout()">${typeof t==='function'?t('logout'):'Thoát'}</button>
       </div>`;
   } else {
     const langHtml = (window.CCL_I18N && CCL_I18N.langSwitcherHtml) ? CCL_I18N.langSwitcherHtml() : '';
@@ -173,15 +173,15 @@ function productCard(item) {
   return `
   <article class="card">
     <a href="/product.html?id=${item.id}" class="card-img">${img}
-      <span class="card-badge ${item.type === 'product' ? 'badge-product' : 'badge-service'}">${item.type === 'product' ? 'Sản phẩm' : 'Dịch vụ'}</span>
+      <span class="card-badge ${item.type === 'product' ? 'badge-product' : 'badge-service'}">${item.type === 'product' ? (typeof t==='function'?t('product'):'Sản phẩm') : (typeof t==='function'?t('service'):'Dịch vụ')}</span>
     </a>
     <div class="card-body">
       <a href="/shop.html?id=${item.shopId}" class="card-shop">🏪 ${item.shopName}</a>
       <a href="/product.html?id=${item.id}" class="card-title">${item.name}</a>
-      <div class="card-meta"><span>${stars(item.rating)} ${item.rating || 0}</span><span>·</span><span>${rc} đánh giá</span></div>
+      <div class="card-meta"><span>${stars(item.rating)} ${item.rating || 0}</span><span>·</span><span>${rc} ${typeof t==='function'?t('reviews'):'đánh giá'}</span></div>
       <div class="card-price">
         <div class="price">${formatVND(item.price)}</div>
-        <button class="btn btn-primary btn-sm" onclick="event.preventDefault();addToCart('${item.id}')">Thêm</button>
+        <button class="btn btn-primary btn-sm" onclick="event.preventDefault();addToCart('${item.id}')">${typeof t==='function'?t('add'):'Thêm'}</button>
       </div>
     </div>
   </article>`;
@@ -233,7 +233,7 @@ function renderCatalog() {
 
   const products = items.filter((i) => i.type === 'product');
   const services = items.filter((i) => i.type === 'service');
-  const empty = '<p class="empty-msg">Không tìm thấy kết quả phù hợp</p>';
+  const empty = `<p class="empty-msg">${typeof t==='function'?t('noResults'):'Không tìm thấy kết quả phù hợp'}</p>`;
   pg.innerHTML = products.length ? products.map(productCard).join('') : empty;
   sg.innerHTML = services.length ? services.map(productCard).join('') : empty;
   const countEl = $('#resultCount');
@@ -246,7 +246,7 @@ function renderCart() {
   if (!container) return;
   const cart = getCart();
   if (!cart.length) {
-    container.innerHTML = `<div class="cart-empty"><div class="empty-icon">🛒</div><p>Giỏ hàng trống</p></div>`;
+    container.innerHTML = `<div class="cart-empty"><div class="empty-icon">🛒</div><p>${typeof t==='function'?t('emptyCart'):'Giỏ hàng trống'}</p></div>`;
     if (summary) summary.style.display = 'none';
     updateCartBadge();
     return;
@@ -266,7 +266,7 @@ function renderCart() {
   let html = '';
   totals.shopBreakdown.forEach((bd) => {
     const items = groups[bd.shopId] || [];
-    html += `<div class="shop-group"><div class="shop-header"><span>🏪 ${bd.shopName}</span><span class="ship-badge">${bd.freeShip ? 'Miễn ship' : 'Ship ' + formatVND(bd.ship)}</span></div>`;
+    html += `<div class="shop-group"><div class="shop-header"><span>🏪 ${bd.shopName}</span><span class="ship-badge">${bd.freeShip ? (typeof t==='function'?t('freeShip'):'Miễn ship') : 'Ship ' + formatVND(bd.ship)}</span></div>`;
     items.forEach((item) => {
       html += `<div class="cart-item">
         <div class="cart-item-info"><div class="cart-item-name">${item.name}</div>
@@ -344,6 +344,7 @@ async function checkoutOrder() {
 function initHome() {
   CCLStore.ensureProducts();
   renderUserNav();
+  if (typeof applyI18n === 'function') applyI18n();
   renderCatalog();
   renderCart();
   updateCartBadge();
