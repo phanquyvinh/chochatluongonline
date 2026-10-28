@@ -33,7 +33,13 @@
         <a href="#cart" class="btn btn-ghost btn-icon cart-btn" title="Giỏ hàng">🛒
           <span class="badge-count" data-cart-count style="display:none">0</span>
         </a>
-        <div id="userNav"></div>
+        <div id="userNav" class="user-nav-box"></div>
+      </div>
+      <div class="lang-slot" id="langSlot">
+        <select id="langSelect" class="lang-select" onchange="setLang(this.value)" aria-label="Language">
+          <option value="vi">VI</option>
+          <option value="en">EN</option>
+        </select>
       </div>
     </div>
   </header>

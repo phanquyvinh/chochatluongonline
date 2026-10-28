@@ -802,36 +802,76 @@ table.data-table tr:hover td { background: var(--bg-muted); }
   .hero-gallery { min-height: 160px; }
 }
 
-/* Nút đăng nhập / đăng ký nổi bật */
-.btn-login-cta {
-  display: inline-flex;
+/* Nút đăng nhập / đăng ký — cùng kích thước */
+.user-nav-box {
+  display: flex;
   align-items: center;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  background: #fff;
-  color: #0f766e;
-  border: 2px solid #0f766e;
-  text-decoration: none;
-  white-space: nowrap;
-  box-shadow: 0 2px 0 rgba(15, 118, 110, 0.15);
+  gap: 8px;
 }
-.btn-login-cta:hover { background: #f0fdfa; }
+.btn-login-cta,
 .btn-register-cta {
   display: inline-flex;
   align-items: center;
-  height: 36px;
-  padding: 0 14px;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 108px;
+  width: 108px;
+  height: 38px;
+  padding: 0 12px;
   border-radius: 10px;
   font-weight: 700;
-  font-size: 0.88rem;
-  background: linear-gradient(135deg, #f59e0b, #ea580c);
-  color: #fff;
-  border: none;
+  font-size: 0.875rem;
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+  line-height: 1;
+}
+.btn-login-cta {
+  background: #fff;
+  color: #0f766e;
+  border: 2px solid #0f766e;
+}
+.btn-login-cta:hover { background: #f0fdfa; }
+.btn-register-cta {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  color: #fff;
+  border: 2px solid transparent;
+  box-shadow: 0 3px 10px rgba(234, 88, 12, 0.3);
 }
 .btn-register-cta:hover { filter: brightness(1.05); color: #fff; }
+
+/* Ngôn ngữ — hàng riêng dưới actions, không bị che */
+.header-inner {
+  flex-wrap: wrap;
+}
+.lang-slot {
+  flex: 1 0 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  position: relative;
+  z-index: 20;
+}
+.lang-slot .lang-select {
+  height: 34px;
+  min-width: 72px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+@media (min-width: 900px) {
+  .lang-slot {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    margin-left: 4px;
+    align-self: center;
+  }
+}
