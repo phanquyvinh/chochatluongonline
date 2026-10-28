@@ -16,18 +16,21 @@
   </style>
 </head>
 <body>
-  <header class="header">
+  <header class="header header-main">
     <div class="container header-inner">
-      <a href="/" class="logo">
+      <a href="/" class="logo logo-lg">
         <div class="logo-mark">CCL</div>
-        <div class="logo-text">chochatluong<span>online</span></div>
+        <div class="logo-text-wrap">
+          <div class="logo-text">chochatluong<span>online</span></div>
+          <div class="logo-tagline">Chợ linh kiện · dịch vụ kỹ thuật</div>
+        </div>
       </a>
-      <div class="search-wrap">
+      <div class="search-wrap search-lg">
         <span class="search-icon">🔍</span>
         <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ, shop..." data-i18n-placeholder="searchPlaceholder" autocomplete="off">
       </div>
       <div class="header-actions">
-        <a href="#cart" class="btn btn-ghost btn-icon cart-btn">🛒
+        <a href="#cart" class="btn btn-ghost btn-icon cart-btn" title="Giỏ hàng">🛒
           <span class="badge-count" data-cart-count style="display:none">0</span>
         </a>
         <div id="userNav"></div>
@@ -35,16 +38,34 @@
     </div>
   </header>
 
-  <main class="container" style="padding-top:24px">
-    <div class="mobile-search">
-      <div class="search-wrap" style="display:flex;width:100%;max-width:none">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="searchInputMobile" placeholder="Tìm sản phẩm, dịch vụ, shop..." autocomplete="off">
+  <section class="hero-market">
+    <div class="container hero-market-inner">
+      <div class="hero-copy">
+        <h1 class="hero-title">chochatluongonline</h1>
+        <p class="hero-desc">Sản phẩm · Dịch vụ · Gian hàng kỹ thuật</p>
+        <div class="hero-search">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="searchInputMobile" placeholder="Tìm sản phẩm, dịch vụ, shop..." data-i18n-placeholder="searchPlaceholder" autocomplete="off">
+        </div>
+      </div>
+      <div class="hero-gallery" aria-hidden="true">
+        <div class="hero-shot hero-shot-1">
+          <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&q=80" alt="" loading="lazy">
+        </div>
+        <div class="hero-shot hero-shot-2">
+          <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80" alt="" loading="lazy">
+        </div>
+        <div class="hero-shot hero-shot-3">
+          <img src="https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=600&q=80" alt="" loading="lazy">
+        </div>
       </div>
     </div>
+  </section>
+
+  <main class="container" style="padding-top:20px">
     <section class="section">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon"">📦</span> <span data-i18n="products">Sản phẩm</span></h2>
+        <h2 class="section-title"><span class="icon">📦</span> <span data-i18n="products">Sản phẩm</span></h2>
         <div class="filters">
           <button class="chip active" data-filter="all" onclick="setFilter('all')" data-i18n="all">Tất cả</button>
           <button class="chip" data-filter="product" onclick="setFilter('product')" data-i18n="products">Sản phẩm</button>
@@ -78,14 +99,14 @@
 
     <section class="section">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon"">🛠️</span> <span data-i18n="services">Dịch vụ</span></h2>
+        <h2 class="section-title"><span class="icon">🛠️</span> <span data-i18n="services">Dịch vụ</span></h2>
       </div>
       <div class="grid" id="servicesGrid"></div>
     </section>
 
     <section class="section" id="cart">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon"">🛍️</span> <span data-i18n="cart">Giỏ hàng</span></h2>
+        <h2 class="section-title"><span class="icon">🛍️</span> <span data-i18n="cart">Giỏ hàng</span></h2>
       </div>
       <div class="cart-section">
         <div id="cartContainer"></div>
