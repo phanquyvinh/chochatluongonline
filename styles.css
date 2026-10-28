@@ -634,13 +634,15 @@ table.data-table tr:hover td { background: var(--bg-muted); }
 
 /* —— Header lớn + hero chợ —— */
 .header-main {
-  padding: 10px 0;
-  box-shadow: 0 1px 0 var(--border), 0 8px 24px rgba(15, 23, 42, 0.04);
+  padding: 8px 0;
+  box-shadow: 0 1px 0 var(--border);
 }
 .header-main .header-inner {
-  gap: 16px 20px;
-  min-height: 52px;
+  gap: 8px 12px;
+  min-height: 48px;
   align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
 }
 .logo-lg { gap: 12px; }
 .logo-lg .logo-mark {
@@ -839,39 +841,100 @@ table.data-table tr:hover td { background: var(--bg-muted); }
 }
 .btn-register-cta:hover { filter: brightness(1.05); color: #fff; }
 
-/* Ngôn ngữ — hàng riêng dưới actions, không bị che */
-.header-inner {
-  flex-wrap: wrap;
-}
+/* Ngôn ngữ gọn trong header */
 .lang-slot {
-  flex: 1 0 100%;
+  flex: 0 0 auto;
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
-  position: relative;
-  z-index: 20;
+  margin: 0;
+  padding: 0;
+  border: none;
+  z-index: 30;
 }
 .lang-slot .lang-select {
   height: 34px;
-  min-width: 72px;
-  padding: 0 10px;
+  min-width: 56px;
+  padding: 0 6px;
   border-radius: 8px;
   border: 1.5px solid var(--border);
-  background: var(--bg);
+  background: #fff;
   font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* —— Mobile header gọn, không chồng —— */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.nav-user .nav-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; }
+.nav-user .btn-sm { height: 32px; padding: 0 8px; font-size: 0.78rem; }
+.user-nav-box { display: flex; align-items: center; gap: 6px; position: relative; }
+
+/* Menu tài khoản dạng dropdown trên mobile */
+.account-menu-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px 0 4px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
 }
-@media (min-width: 900px) {
-  .lang-slot {
-    flex: 0 0 auto;
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
-    margin-left: 4px;
-    align-self: center;
+.account-menu-btn .avatar { width: 28px; height: 28px; font-size: 0.75rem; }
+.account-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15,23,42,0.14);
+  padding: 8px;
+  z-index: 200;
+}
+.account-dropdown.open { display: block; }
+.account-dropdown a,
+.account-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.account-dropdown a:hover,
+.account-dropdown button:hover { background: var(--bg-muted); }
+
+@media (max-width: 768px) {
+  .header-main .header-inner {
+    flex-wrap: nowrap;
+    gap: 8px;
   }
+  .logo-tagline { display: none !important; }
+  .header-actions { margin-left: auto; gap: 6px; }
+  .nav-user-desktop { display: none !important; }
+  .account-menu-btn { display: inline-flex; }
+  .lang-slot { order: 0; }
+  .hero-market { margin-top: 0; }
+  .hero-copy .hero-title { font-size: 1.15rem; }
+}
+@media (min-width: 769px) {
+  .account-menu-btn { display: none !important; }
+  .account-dropdown { display: none !important; }
+  .nav-user-desktop { display: flex !important; }
 }
