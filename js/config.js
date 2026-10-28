@@ -29,6 +29,12 @@ const DEFAULT_PLATFORM = {
   locale: 'vi-VN',
   supportHotline: '0975898828',
   supportEmail: 'phanquyvinh@gmail.com',
+  heroImages: [
+    'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&q=80',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80',
+    'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=600&q=80',
+  ],
+  heroTagline: 'Chợ linh kiện · dịch vụ kỹ thuật',
   version: 1,
   updatedAt: null,
   updatedBy: null,

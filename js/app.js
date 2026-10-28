@@ -158,8 +158,8 @@ function renderUserNav() {
       links + '</div>';
   } else {
     el.innerHTML = langHtml +
-      '<a href="/login.html" class="btn btn-ghost btn-sm">' + tt('login', 'Đăng nhập') + '</a>' +
-      '<a href="/register.html" class="btn btn-primary btn-sm">' + tt('register', 'Đăng ký') + '</a>';
+      '<a href="/login.html" class="btn btn-login-cta">' + tt('login', 'Đăng nhập') + '</a>' +
+      '<a href="/register.html" class="btn btn-register-cta">' + tt('register', 'Đăng ký') + '</a>';
   }
 }
 
@@ -340,8 +340,25 @@ async function checkoutOrder() {
   toast('Đặt hàng thành công — tiền đang tạm giữ', 'success');
 }
 
+
+function applyHero() {
+  if (!window.CCLConfig) return;
+  const c = CCLConfig.loadPlatformConfig();
+  const imgs = c.heroImages || [];
+  ['heroImg1','heroImg2','heroImg3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el && imgs[i]) { el.src = imgs[i]; el.style.display = ''; }
+    else if (el && !imgs[i]) el.style.display = 'none';
+  });
+  const tag = document.querySelector('.logo-tagline');
+  if (tag && c.heroTagline) tag.textContent = c.heroTagline;
+  const desc = document.querySelector('.hero-desc');
+  if (desc && c.heroTagline) desc.textContent = c.heroTagline;
+}
+
 function initHome() {
   CCLStore.ensureProducts();
+  applyHero();
   renderUserNav();
   if (typeof applyI18n === 'function') applyI18n();
   renderCatalog();
@@ -376,6 +393,7 @@ window.renderCart = renderCart;
 window.applyVoucher = applyVoucher;
 window.checkoutOrder = checkoutOrder;
 window.initHome = initHome;
+window.applyHero = applyHero;
 window.getSession = getSession;
 window.requireAuth = requireAuth;
 window.renderUserNav = renderUserNav;
