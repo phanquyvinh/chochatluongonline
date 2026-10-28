@@ -122,6 +122,7 @@ function renderUserNav() {
         ${s.role === 'admin' ? '<a href="/admin.html" class="btn btn-ghost btn-sm">Quản trị</a>' : ''}
         ${s.role === 'seller' ? '<a href="/seller.html" class="btn btn-ghost btn-sm">Gian hàng</a>' : ''}
         ${s.role === 'buyer' || s.role === 'admin' ? '<a href="/orders.html" class="btn btn-ghost btn-sm">Đơn hàng</a>' : ''}
+        <a href="/profile.html" class="btn btn-ghost btn-sm">Hồ sơ</a>
         <button class="btn btn-outline btn-sm" onclick="logout()">Thoát</button>
       </div>`;
   } else {
@@ -160,22 +161,51 @@ function setFilter(f) {
   $$('.chip').forEach((c) => c.classList.toggle('active', c.dataset.filter === f));
   renderCatalog();
 }
+function getSearchQuery() {
+  const a = ($('#searchInput')?.value || '').trim();
+  const b = ($('#searchInputMobile')?.value || '').trim();
+  return (a || b).toLowerCase();
+}
+
 function renderCatalog() {
   const pg = $('#productsGrid'), sg = $('#servicesGrid');
   if (!pg || !sg) return;
-  const q = ($('#searchInput')?.value || '').trim().toLowerCase();
+  const q = getSearchQuery();
+  const minPrice = Number($('#filterMinPrice')?.value) || 0;
+  const maxPrice = Number($('#filterMaxPrice')?.value) || 0;
+  const minRating = Number($('#filterMinRating')?.value) || 0;
+  const sortBy = $('#filterSort')?.value || 'default';
+
   let items = CCLStore.getProducts();
   items = items.filter((item) => {
     if (currentFilter === 'product' && item.type !== 'product') return false;
     if (currentFilter === 'service' && item.type !== 'service') return false;
     if (!['all', 'product', 'service'].includes(currentFilter) && item.category !== currentFilter) return false;
-    if (q && !`${item.name} ${item.shopName}`.toLowerCase().includes(q)) return false;
+    if (q) {
+      const hay = `${item.name} ${item.shopName || ''} ${item.description || ''} ${item.category || ''}`.toLowerCase();
+      const words = q.split(/\s+/).filter(Boolean);
+      if (!words.every((w) => hay.includes(w))) return false;
+    }
+    const price = Number(item.price) || 0;
+    if (minPrice > 0 && price < minPrice) return false;
+    if (maxPrice > 0 && price > maxPrice) return false;
+    if (minRating > 0 && (Number(item.rating) || 0) < minRating) return false;
     return true;
   });
+
+  if (sortBy === 'price_asc') items.sort((a, b) => (a.price || 0) - (b.price || 0));
+  else if (sortBy === 'price_desc') items.sort((a, b) => (b.price || 0) - (a.price || 0));
+  else if (sortBy === 'rating') items.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  else if (sortBy === 'sold') items.sort((a, b) => (b.sold || 0) - (a.sold || 0));
+  else if (sortBy === 'newest') items.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
   const products = items.filter((i) => i.type === 'product');
   const services = items.filter((i) => i.type === 'service');
-  pg.innerHTML = products.length ? products.map(productCard).join('') : '<p class="empty-msg">Không có sản phẩm</p>';
-  sg.innerHTML = services.length ? services.map(productCard).join('') : '<p class="empty-msg">Không có dịch vụ</p>';
+  const empty = '<p class="empty-msg">Không tìm thấy kết quả phù hợp</p>';
+  pg.innerHTML = products.length ? products.map(productCard).join('') : empty;
+  sg.innerHTML = services.length ? services.map(productCard).join('') : empty;
+  const countEl = $('#resultCount');
+  if (countEl) countEl.textContent = items.length ? `${items.length} kết quả` : '';
 }
 
 function renderCart() {
@@ -287,6 +317,15 @@ function initHome() {
   updateCartBadge();
   const search = $('#searchInput');
   if (search) search.addEventListener('input', () => renderCatalog());
+  const searchM = $('#searchInputMobile');
+  if (searchM) searchM.addEventListener('input', () => {
+    if (search) search.value = searchM.value;
+    renderCatalog();
+  });
+  ['filterMinPrice','filterMaxPrice','filterMinRating','filterSort'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => renderCatalog());
+  });
 }
 
 window.formatVND = formatVND;

@@ -167,6 +167,7 @@ function createUser(data) {
     name: data.name.trim(),
     role: data.role || 'buyer', // buyer | seller | shipper
     phone: data.phone || '',
+    address: data.address || '',
     shopId: data.role === 'seller' ? uid('s') : null,
     shopName: data.role === 'seller' ? (data.shopName || data.name) : null,
     verified: false,
