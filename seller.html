@@ -79,13 +79,24 @@
         </div>
 
         <div class="panel">
-          <h2 class="panel-title">Danh sách của bạn</h2>
-          <div class="table-wrap">
+          <h2 class="panel-title">Sản phẩm & dịch vụ đang bán</h2>
+          <div class="seller-products-grid" id="myProductsGrid"></div>
+          <div class="table-wrap" style="margin-top:16px">
             <table class="data-table">
               <thead><tr><th>Tên</th><th>Loại</th><th>Giá</th><th></th></tr></thead>
               <tbody id="myProducts"></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Liên hệ gian hàng</h2>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">SĐT và địa chỉ hiển thị cho admin / đơn hàng.</p>
+          <div class="form-row">
+            <div class="form-field"><label>Số điện thoại</label><input type="tel" id="sellerPhone" placeholder="09x..."></div>
+            <div class="form-field" style="flex:2"><label>Địa chỉ</label><input type="text" id="sellerAddress" placeholder="Địa chỉ lấy hàng / cửa hàng"></div>
+          </div>
+          <button class="btn btn-primary" onclick="saveSellerContact()">Lưu liên hệ</button>
         </div>
 
         <div class="panel">
@@ -123,6 +134,13 @@
       if (bank.acc) document.getElementById('bankAcc').value = bank.acc;
       if (bank.holder) document.getElementById('bankHolder').value = bank.holder;
       renderMyProducts();
+      const me = CCLStore.findUserByEmail(session.email);
+      if (me) {
+        const ph = document.getElementById('sellerPhone');
+        const ad = document.getElementById('sellerAddress');
+        if (ph) ph.value = me.phone || '';
+        if (ad) ad.value = me.address || '';
+      }
     }
 
     function toggleAccept() {
@@ -151,7 +169,14 @@
       const list = CCLStore.getProducts().filter((p) =>
         p.shopId === session.shopId || (session.email && p.sellerEmail === session.email)
       );
+      const grid = document.getElementById('myProductsGrid');
+      if (grid) {
+        grid.innerHTML = list.length
+          ? list.map((p) => productCard(p)).join('')
+          : '<p style="color:var(--text-muted)">Chưa có sản phẩm — đăng ở form phía trên</p>';
+      }
       const body = document.getElementById('myProducts');
+      if (!body) return;
       if (!list.length) {
         body.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);text-align:center">Chưa có sản phẩm</td></tr>';
         return;
@@ -159,7 +184,7 @@
       body.innerHTML = list.map((p) => `
         <tr>
           <td>${p.name}</td>
-          <td>${p.type === 'product' ? 'SP' : 'DV'}</td>
+          <td>${p.type === 'product' ? 'Sản phẩm' : 'Dịch vụ'}</td>
           <td>${formatVND(p.price)}</td>
           <td>
             <button class="btn btn-ghost btn-sm" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'>Sửa</button>
@@ -167,6 +192,26 @@
           </td>
         </tr>
       `).join('');
+    }
+
+    function saveSellerContact() {
+      const phone = document.getElementById('sellerPhone').value.trim();
+      const address = document.getElementById('sellerAddress').value.trim();
+      if (!CCLStore.findUserByEmail(session.email)) {
+        CCLStore.createUser({
+          name: session.name || session.email,
+          email: session.email,
+          password: 'seller-' + Date.now(),
+          role: 'seller',
+          shopName: session.shopName,
+          phone,
+        });
+        CCLStore.updateUser(session.email, { verified: true, address, shopId: session.shopId });
+      } else {
+        CCLStore.updateUser(session.email, { phone, address });
+      }
+      CCLStore.setSession({ ...session, phone, address });
+      toast('Đã lưu liên hệ', 'success');
     }
 
     function resetProductForm() {

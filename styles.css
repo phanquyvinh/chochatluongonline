@@ -547,7 +547,7 @@ table.data-table tr:hover td { background: var(--bg-muted); }
 @media (max-width: 768px) {
   .hero-inner { grid-template-columns: 1fr; }
   .hero-card { display: none; }
-  .search-wrap { display: none; }
+  .search-wrap { display: flex; flex: 1; min-width: 0; max-width: none; }
   .footer-inner { grid-template-columns: 1fr; gap: 24px; }
   .logo-text { font-size: 1rem; }
   .checkout-row { flex-direction: column; align-items: stretch; }
@@ -558,4 +558,35 @@ table.data-table tr:hover td { background: var(--bg-muted); }
   .card-img { height: 110px; font-size: 1.8rem; }
   .card-body { padding: 10px 12px 12px; }
   .price { font-size: 1rem; }
+}
+
+/* Profile + admin users */
+.users-table td { vertical-align: top; font-size: 0.88rem; }
+.users-table .role-pill {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 600; background: var(--bg-muted);
+}
+.role-buyer { color: #0369a1; }
+.role-seller { color: #0f766e; }
+.role-shipper { color: #a16207; }
+.role-admin { color: #be123c; }
+.filter-bar {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-bottom: 16px;
+}
+.filter-bar select, .filter-bar input[type="number"] {
+  padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: 0.9rem; background: var(--bg); color: var(--text);
+}
+.sort-select { min-width: 140px; }
+.mobile-search {
+  display: none; padding: 12px 0 0;
+}
+@media (max-width: 768px) {
+  .mobile-search { display: block; }
+  .header .search-wrap { display: none !important; }
+}
+.seller-products-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px; margin-top: 12px;
 }

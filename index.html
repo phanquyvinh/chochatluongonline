@@ -24,7 +24,7 @@
       </a>
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ..." autocomplete="off">
+        <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ, shop..." autocomplete="off">
       </div>
       <div class="header-actions">
         <a href="#cart" class="btn btn-ghost btn-icon cart-btn">🛒
@@ -36,6 +36,12 @@
   </header>
 
   <main class="container" style="padding-top:24px">
+    <div class="mobile-search">
+      <div class="search-wrap" style="display:flex;width:100%;max-width:none">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="searchInputMobile" placeholder="Tìm sản phẩm, dịch vụ, shop..." autocomplete="off">
+      </div>
+    </div>
     <section class="section">
       <div class="section-header">
         <h2 class="section-title"><span class="icon">📦</span> Sản phẩm</h2>
@@ -47,6 +53,25 @@
           <button class="chip" data-filter="sua-chua" onclick="setFilter('sua-chua')">Sửa chữa</button>
           <button class="chip" data-filter="lap-dat" onclick="setFilter('lap-dat')">Lắp đặt</button>
         </div>
+      </div>
+      <div class="filter-bar">
+        <input type="number" id="filterMinPrice" placeholder="Giá từ" min="0" step="10000" style="width:110px">
+        <input type="number" id="filterMaxPrice" placeholder="Giá đến" min="0" step="10000" style="width:110px">
+        <select id="filterMinRating" class="sort-select">
+          <option value="0">Mọi đánh giá</option>
+          <option value="3">Từ 3★</option>
+          <option value="4">Từ 4★</option>
+          <option value="4.5">Từ 4.5★</option>
+        </select>
+        <select id="filterSort" class="sort-select">
+          <option value="default">Phù hợp nhất</option>
+          <option value="price_asc">Giá thấp → cao</option>
+          <option value="price_desc">Giá cao → thấp</option>
+          <option value="rating">Đánh giá cao</option>
+          <option value="sold">Bán chạy</option>
+          <option value="newest">Mới nhất</option>
+        </select>
+        <span id="resultCount" style="font-size:0.85rem;color:var(--text-muted)"></span>
       </div>
       <div class="grid" id="productsGrid"></div>
     </section>
