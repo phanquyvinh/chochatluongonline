@@ -1117,3 +1117,47 @@ table.data-table tr:hover td { background: var(--bg-muted); }
     display: none !important;
   }
 }
+
+/* Banner top: chỉ nút, không mô tả tràn */
+.hero-top {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 10px !important;
+  box-sizing: border-box;
+  padding: 0 !important;
+}
+.hero-top .hero-desc,
+.hero-desc { display: none !important; }
+.hero-auth {
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0 !important;
+  max-width: 100%;
+}
+.hero-auth.is-hidden { display: none !important; }
+.hero-auth .btn-login-cta,
+.hero-auth .btn-register-cta {
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: 46vw;
+  height: 34px !important;
+  padding: 0 12px !important;
+  font-size: 0.78rem !important;
+  border-radius: 9px !important;
+  line-height: 1 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 400px) {
+  .hero-auth .btn-login-cta,
+  .hero-auth .btn-register-cta {
+    height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 0.72rem !important;
+  }
+}
