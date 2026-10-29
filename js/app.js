@@ -143,7 +143,7 @@ function syncHeroAuth() {
   const box = document.getElementById('heroAuth');
   if (!box) return;
   const s = getSession();
-  box.style.display = s ? 'none' : 'flex';
+  box.classList.toggle('is-hidden', !!s);
 }
 
 function renderUserNav() {
@@ -189,10 +189,10 @@ function renderUserNav() {
       document.addEventListener('click', () => dd.classList.remove('open'), { once: true });
     }
   } else {
-    // Header: link nhỏ; nút lớn nằm trên banner (heroAuth)
+    // Header + banner: nút nổi bật, luôn hiện khi chưa đăng nhập
     el.innerHTML =
-      '<a href="/login.html" class="btn btn-ghost btn-sm header-auth-link">' + tt('login', 'Đăng nhập') + '</a>' +
-      '<a href="/register.html" class="btn btn-primary btn-sm header-auth-link">' + tt('register', 'Đăng ký') + '</a>';
+      '<a href="/login.html" class="btn btn-login-cta header-auth-link">' + tt('login', 'Đăng nhập') + '</a>' +
+      '<a href="/register.html" class="btn btn-register-cta header-auth-link">' + tt('register', 'Đăng ký') + '</a>';
   }
   const sel = document.getElementById('langSelect');
   if (sel && typeof getLang === 'function') sel.value = getLang();
