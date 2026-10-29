@@ -22,14 +22,24 @@
           <label>Họ tên</label>
           <input type="text" id="name" placeholder="Họ và tên" autocomplete="name">
         </div>
+
         <div class="form-group">
+          <label>Phương thức</label>
+          <div class="filters" style="margin:0">
+            <button type="button" class="chip active" id="tabEmail" onclick="setMethod('email')">Email</button>
+            <button type="button" class="chip" id="tabPhone" onclick="setMethod('phone')">Số điện thoại</button>
+          </div>
+        </div>
+
+        <div class="form-group" id="emailGroup">
           <label>Email</label>
           <input type="email" id="email" placeholder="Email nhận OTP" autocomplete="email">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="phoneGroup" style="display:none">
           <label>Số điện thoại</label>
           <input type="tel" id="phone" placeholder="09x... hoặc +84..." autocomplete="tel">
         </div>
+
         <div class="form-group">
           <label>Mật khẩu</label>
           <input type="password" id="password" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
@@ -51,7 +61,7 @@
 
       <div id="stepOtp" style="display:none">
         <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:16px;text-align:center">
-          Đã gửi mã tới <strong id="otpEmail"></strong>. Kiểm tra hộp thư (và mục Spam).
+          Đã gửi mã tới <strong id="otpTarget"></strong>
         </p>
         <div class="form-group">
           <label>Mã OTP (6 số)</label>
@@ -73,96 +83,167 @@
   <script src="js/app.js"></script>
   <script>
     let otpToken = '';
+    let regMethod = 'email';
+    let pending = null;
+
+    function setMethod(m) {
+      regMethod = m;
+      document.getElementById('tabEmail').classList.toggle('active', m === 'email');
+      document.getElementById('tabPhone').classList.toggle('active', m === 'phone');
+      document.getElementById('emailGroup').style.display = m === 'email' ? 'block' : 'none';
+      document.getElementById('phoneGroup').style.display = m === 'phone' ? 'block' : 'none';
+    }
 
     function onRoleChange() {
       document.getElementById('shopNameGroup').style.display =
         document.getElementById('role').value === 'seller' ? 'block' : 'none';
     }
 
-    async function submitRegister() {
+    function collectForm() {
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const password = document.getElementById('password').value;
       const role = document.getElementById('role').value;
       const shopName = document.getElementById('shopName').value.trim();
+      return { name, email, phone, password, role, shopName };
+    }
 
-      if (!name || !password) { toast('Điền họ tên và mật khẩu', 'error'); return; }
-      if (!email && !phone) { toast('Cần ít nhất email hoặc số điện thoại', 'error'); return; }
-      if (phone && phone.replace(/\D/g, '').length < 9) { toast('Số điện thoại không hợp lệ', 'error'); return; }
-      if (password.length < 6) { toast('Mật khẩu tối thiểu 6 ký tự', 'error'); return; }
-      if (role === 'seller' && !shopName) { toast('Nhập tên gian hàng', 'error'); return; }
+    function validateForm(f) {
+      if (!f.name || !f.password) { toast('Điền họ tên và mật khẩu', 'error'); return false; }
+      if (f.password.length < 6) { toast('Mật khẩu tối thiểu 6 ký tự', 'error'); return false; }
+      if (f.role === 'seller' && !f.shopName) { toast('Nhập tên gian hàng', 'error'); return false; }
+      if (regMethod === 'email') {
+        if (!f.email || !f.email.includes('@')) { toast('Nhập email hợp lệ', 'error'); return false; }
+        if (CCLStore.findUserByEmail(f.email)) { toast('Email đã được đăng ký', 'error'); return false; }
+      } else {
+        const digits = f.phone.replace(/\D/g, '');
+        if (digits.length < 9) { toast('Số điện thoại không hợp lệ', 'error'); return false; }
+        if (CCLStore.findUserByPhone && CCLStore.findUserByPhone(f.phone)) {
+          toast('Số điện thoại đã được đăng ký', 'error');
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function showOtpStep(targetLabel) {
+      document.getElementById('stepRegister').style.display = 'none';
+      document.getElementById('stepOtp').style.display = 'block';
+      document.getElementById('otpTarget').textContent = targetLabel;
+      document.getElementById('formTitle').textContent = 'Xác nhận OTP';
+      document.getElementById('formSub').textContent = regMethod === 'phone'
+        ? 'Nhập mã OTP đã gửi tới số điện thoại'
+        : 'Nhập mã OTP đã gửi về email';
+    }
+
+    async function sendEmailOtp(f) {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register_otp',
+          name: f.name,
+          email: f.email,
+          phone: f.phone || '',
+          password: f.password,
+          role: f.role,
+          shopName: f.shopName,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Không gửi được OTP');
+      otpToken = data.otpToken;
+      pending = { ...f, channel: 'email' };
+      showOtpStep(f.email);
+      toast('Đã gửi mã OTP tới email', 'success');
+    }
+
+    function sendPhoneOtp(f) {
+      const key = CCLStore.normalizePhone(f.phone);
+      const code = CCLStore.setOtp(key, 'register');
+      otpToken = 'phone:' + key;
+      pending = { ...f, channel: 'phone', phoneKey: key, localCode: code };
+      showOtpStep(f.phone);
+      // Môi trường chưa cấu hình SMS gateway: mã OTP hiển thị một lần để hoàn tất đăng ký
+      toast('Mã OTP: ' + code, 'info');
+    }
+
+    async function submitRegister() {
+      const f = collectForm();
+      if (!validateForm(f)) return;
 
       const btn = document.getElementById('btnSend');
       btn.disabled = true;
-      btn.textContent = 'Đang xử lý...';
+      btn.textContent = 'Đang gửi...';
 
       try {
-        if (!email && phone) {
-          if (CCLStore.findUserByPhone && CCLStore.findUserByPhone(phone)) {
-            toast('Số điện thoại đã được đăng ký', 'error');
-            return;
-          }
-          const created = CCLStore.createUser({
-            name, email: '', phone, password, role, shopName, verified: true,
-          });
-          if (created.error) { toast(created.error, 'error'); return; }
-          const u = created.user;
-          CCLStore.setSession({
-            email: u.email || '',
-            name: u.name,
-            role: u.role,
-            shopId: u.shopId,
-            shopName: u.shopName,
-            phone: u.phone,
-            id: u.id,
-          });
-          toast('Đăng ký bằng SĐT thành công', 'success');
-          setTimeout(() => {
-            if (role === 'seller') location.href = '/seller.html';
-            else location.href = '/';
-          }, 600);
-          return;
+        if (regMethod === 'email') {
+          await sendEmailOtp(f);
+        } else {
+          sendPhoneOtp(f);
         }
-
-        const res = await fetch('/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'register_otp',
-            name, email, phone, password, role, shopName,
-          }),
-        });
-        const data = await res.json();
-        if (!data.success) {
-          toast(data.message || 'Không gửi được OTP', 'error');
-          return;
-        }
-        otpToken = data.otpToken;
-        document.getElementById('stepRegister').style.display = 'none';
-        document.getElementById('stepOtp').style.display = 'block';
-        document.getElementById('otpEmail').textContent = email;
-        document.getElementById('formTitle').textContent = 'Xác nhận email';
-        document.getElementById('formSub').textContent = 'Nhập OTP đã gửi về hộp thư';
-        toast('Đã gửi mã OTP tới email', 'success');
       } catch (e) {
-        toast('Lỗi kết nối máy chủ', 'error');
+        toast(e.message || 'Không gửi được OTP', 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Gửi mã OTP';
       }
     }
 
+    function finishLocalRegister(f) {
+      const created = CCLStore.createUser({
+        name: f.name,
+        email: f.channel === 'email' ? f.email : '',
+        phone: f.phone || '',
+        password: f.password,
+        role: f.role,
+        shopName: f.shopName,
+        verified: true,
+      });
+      if (created.error) {
+        toast(created.error, 'error');
+        return false;
+      }
+      const u = created.user;
+      CCLStore.setSession({
+        email: u.email || '',
+        name: u.name,
+        role: u.role,
+        shopId: u.shopId,
+        shopName: u.shopName,
+        phone: u.phone,
+        id: u.id,
+      });
+      return true;
+    }
+
     async function submitOtp() {
       const code = document.getElementById('otpCode').value.trim();
       if (!code || code.length < 6) { toast('Nhập đủ 6 số OTP', 'error'); return; }
-      if (!otpToken) { toast('Phiên OTP không hợp lệ', 'error'); return; }
+      if (!pending || !otpToken) { toast('Phiên OTP không hợp lệ', 'error'); return; }
 
       const btn = document.getElementById('btnVerify');
       btn.disabled = true;
       btn.textContent = 'Đang xác nhận...';
 
       try {
+        if (pending.channel === 'phone') {
+          const result = CCLStore.verifyOtp(pending.phoneKey, code);
+          const ok = result === true || (result && result.ok);
+          if (!ok) {
+            toast((result && result.message) || 'OTP không đúng hoặc đã hết hạn', 'error');
+            return;
+          }
+          if (!finishLocalRegister(pending)) return;
+          toast('Đăng ký thành công', 'success');
+          setTimeout(() => {
+            if (pending.role === 'seller') location.href = '/seller.html';
+            else location.href = '/';
+          }, 500);
+          return;
+        }
+
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -174,43 +255,54 @@
           return;
         }
 
-        // Lưu user local + session
         const u = data.user;
         const existing = CCLStore.findUserByEmail(u.email);
         if (!existing) {
           const created = CCLStore.createUser({
             name: u.name,
             email: u.email,
-            password: u.password,
-            role: u.role,
-            shopName: u.shopName,
-            phone: u.phone,
+            password: u.password || pending.password,
+            role: u.role || pending.role,
+            shopName: u.shopName || pending.shopName,
+            phone: u.phone || pending.phone || '',
+            verified: true,
           });
+          if (created.error) { toast(created.error, 'error'); return; }
           if (created.user) {
-            CCLStore.updateUser(u.email, {
+            CCLStore.updateUser(created.user.email || created.user.id, {
               verified: true,
               shopId: created.user.shopId,
               shopName: created.user.shopName || u.shopName,
             });
           }
         } else {
-          CCLStore.updateUser(u.email, { verified: true, password: u.password, name: u.name });
+          CCLStore.updateUser(u.email, {
+            verified: true,
+            password: u.password || pending.password,
+            name: u.name,
+            phone: u.phone || pending.phone || existing.phone,
+          });
         }
 
         const local = CCLStore.findUserByEmail(u.email);
         CCLStore.setSession(local || {
-          email: u.email, name: u.name, role: u.role,
-          shopId: local?.shopId, shopName: u.shopName,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          shopId: local?.shopId,
+          shopName: u.shopName,
+          phone: u.phone || pending.phone,
         });
         if (data.token) localStorage.setItem('vq_token', data.token);
 
-        toast('Kích hoạt thành công', 'success');
+        toast('Đăng ký thành công', 'success');
         setTimeout(() => {
-          if (u.role === 'seller') location.href = '/seller.html';
+          const role = (local && local.role) || u.role || pending.role;
+          if (role === 'seller') location.href = '/seller.html';
           else location.href = '/';
         }, 500);
       } catch (e) {
-        toast('Lỗi kết nối', 'error');
+        toast('Lỗi kết nối máy chủ', 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Xác nhận';
@@ -218,32 +310,17 @@
     }
 
     async function resendOtp() {
-      if (!otpToken) return;
-      const btn = document.getElementById('btnResend');
-      btn.disabled = true;
+      if (!pending) { toast('Phiên không hợp lệ', 'error'); return; }
       try {
-        const res = await fetch('/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'resend_otp', otpToken }),
-        });
-        const data = await res.json();
-        if (!data.success) {
-          toast(data.message || 'Không gửi lại được', 'error');
-          return;
+        if (pending.channel === 'phone') {
+          sendPhoneOtp(pending);
+        } else {
+          await sendEmailOtp(pending);
         }
-        otpToken = data.otpToken;
-        toast('Đã gửi lại OTP — kiểm tra email', 'success');
-      } catch {
-        toast('Lỗi kết nối', 'error');
-      } finally {
-        btn.disabled = false;
+      } catch (e) {
+        toast(e.message || 'Không gửi lại được OTP', 'error');
       }
     }
-
-    document.getElementById('otpCode')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submitOtp();
-    });
   </script>
 </body>
 </html>

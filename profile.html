@@ -20,7 +20,6 @@
 
   <main class="container" style="padding:28px 20px 48px;max-width:560px">
     <h1 style="font-size:1.3rem;margin-bottom:8px">Hồ sơ của bạn</h1>
-    
 
     <div class="panel">
       <div class="form-group">
@@ -50,6 +49,23 @@
       </div>
       <button class="btn btn-primary" onclick="saveProfile()">Lưu thay đổi</button>
     </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2 class="panel-title">Đổi mật khẩu</h2>
+      <div class="form-group">
+        <label>Mật khẩu hiện tại</label>
+        <input type="password" id="oldPassword" autocomplete="current-password" placeholder="Mật khẩu hiện tại">
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu mới</label>
+        <input type="password" id="newPassword" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự">
+      </div>
+      <div class="form-group">
+        <label>Nhập lại mật khẩu mới</label>
+        <input type="password" id="newPassword2" autocomplete="new-password" placeholder="Nhập lại mật khẩu mới">
+      </div>
+      <button class="btn btn-primary" onclick="changePassword()">Đổi mật khẩu</button>
+    </div>
   </main>
 
   <script src="js/i18n.js"></script>
@@ -59,21 +75,42 @@
   <script>
     const roleLabel = { buyer: 'Người mua', seller: 'Người bán', shipper: 'Vận chuyển', admin: 'Quản trị' };
 
+    function resolveUser(s) {
+      if (!s) return null;
+      let u = null;
+      if (s.email) u = CCLStore.findUserByEmail(s.email);
+      if (!u && s.phone && CCLStore.findUserByPhone) u = CCLStore.findUserByPhone(s.phone);
+      if (!u && s.id) {
+        u = (CCLStore.getUsers() || []).find((x) => x.id === s.id) || null;
+      }
+      return u || s;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const s = requireAuth(['buyer', 'seller', 'shipper', 'admin']);
       if (!s) return;
       renderUserNav();
-      const u = CCLStore.findUserByEmail(s.email) || s;
+      const u = resolveUser(s);
       document.getElementById('name').value = u.name || s.name || '';
       document.getElementById('email').value = u.email || s.email || '';
       document.getElementById('role').value = roleLabel[u.role || s.role] || (u.role || s.role);
-      document.getElementById('phone').value = u.phone || '';
+      document.getElementById('phone').value = u.phone || s.phone || '';
       document.getElementById('address').value = u.address || '';
       if ((u.role || s.role) === 'seller') {
         document.getElementById('shopNameGroup').style.display = 'block';
         document.getElementById('shopName').value = u.shopName || s.shopName || '';
       }
     });
+
+    function userKey(s, u) {
+      if (u && u.email) return u.email;
+      if (s && s.email) return s.email;
+      if (u && u.phone) return u.phone;
+      if (s && s.phone) return s.phone;
+      if (u && u.id) return u.id;
+      if (s && s.id) return s.id;
+      return '';
+    }
 
     function saveProfile() {
       const s = getSession();
@@ -85,29 +122,64 @@
         const shopName = document.getElementById('shopName').value.trim();
         if (shopName) patch.shopName = shopName;
       }
-      let u = CCLStore.findUserByEmail(s.email);
-      if (!u) {
-        CCLStore.createUser({
-          name: s.name || s.email,
-          email: s.email,
+
+      let u = resolveUser(s);
+      const key = userKey(s, u);
+      if (!u || !u.id) {
+        const created = CCLStore.createUser({
+          name: s.name || s.email || phone,
+          email: s.email || '',
           password: 'profile-' + Date.now(),
           role: s.role,
           shopName: s.shopName,
           phone,
+          verified: true,
         });
-        CCLStore.updateUser(s.email, { verified: true, address, ...patch });
+        if (created.user) {
+          CCLStore.updateUser(created.user.email || created.user.id || created.user.phone, {
+            verified: true,
+            address,
+            ...patch,
+          });
+          u = created.user;
+        }
       } else {
-        CCLStore.updateUser(s.email, patch);
+        CCLStore.updateUser(key, patch);
+        u = resolveUser(s);
       }
-      u = CCLStore.findUserByEmail(s.email);
+
       CCLStore.setSession({
         ...s,
         name: u?.name || s.name,
         shopName: u?.shopName || s.shopName,
-        phone: u?.phone,
-        address: u?.address,
+        phone: u?.phone || phone,
+        address: u?.address || address,
+        email: u?.email || s.email || '',
+        id: u?.id || s.id,
       });
       toast('Đã cập nhật hồ sơ', 'success');
+    }
+
+    function changePassword() {
+      const s = getSession();
+      if (!s) return;
+      const oldP = document.getElementById('oldPassword').value;
+      const newP = document.getElementById('newPassword').value;
+      const newP2 = document.getElementById('newPassword2').value;
+      if (!oldP || !newP) { toast('Nhập đủ mật khẩu', 'error'); return; }
+      if (newP.length < 6) { toast('Mật khẩu mới tối thiểu 6 ký tự', 'error'); return; }
+      if (newP !== newP2) { toast('Mật khẩu mới không khớp', 'error'); return; }
+
+      const u = resolveUser(s);
+      if (!u || !u.id) { toast('Không tìm thấy tài khoản', 'error'); return; }
+      if (u.password !== oldP) { toast('Mật khẩu hiện tại không đúng', 'error'); return; }
+
+      const key = userKey(s, u);
+      CCLStore.updateUser(key, { password: newP });
+      document.getElementById('oldPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('newPassword2').value = '';
+      toast('Đã đổi mật khẩu', 'success');
     }
   </script>
 </body>
