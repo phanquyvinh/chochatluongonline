@@ -58,8 +58,8 @@
       <!-- Password login -->
       <div id="panelPass" style="display:none">
         <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" autocomplete="username" placeholder="Email">
+          <label for="email">Email hoặc số điện thoại</label>
+          <input type="text" id="email" autocomplete="username" placeholder="Email hoặc 09x...">
         </div>
         <div class="form-group">
           <label for="password">Mật khẩu</label>
@@ -67,7 +67,7 @@
         </div>
         <button class="btn btn-primary btn-block" id="loginBtn" onclick="handlePasswordLogin()">Đăng nhập</button>
         <p style="font-size:0.8rem;color:var(--text-muted);margin-top:12px;text-align:center">
-          Tài khoản đăng ký trên web: dùng tab <strong>OTP email</strong> nếu quên mật khẩu hoặc đổi máy.
+          Đăng nhập bằng email hoặc SĐT đã đăng ký. Tab <strong>OTP email</strong> dùng khi quên mật khẩu.
         </p>
       </div>
 
@@ -193,22 +193,22 @@
     }
 
     async function handlePasswordLogin() {
-      const email = document.getElementById('email').value.trim();
+      const loginId = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      if (!email || !password) { toast('Nhập email và mật khẩu', 'error'); return; }
+      if (!loginId || !password) { toast('Nhập email/SĐT và mật khẩu', 'error'); return; }
       const btn = document.getElementById('loginBtn');
       btn.disabled = true;
 
-      const local = CCLStore.findUserByEmail(email);
+      const local = (CCLStore.findUserByLogin && CCLStore.findUserByLogin(loginId))
+        || CCLStore.findUserByEmail(loginId);
       if (local && local.blocked) {
         toast('Tài khoản bị khóa', 'error');
         btn.disabled = false;
         return;
       }
-      // Mật khẩu khớp local → vào luôn
       if (local && local.password === password) {
         if (!local.verified) {
-          toast('Email chưa xác nhận OTP', 'error');
+          toast('Tài khoản chưa xác nhận', 'error');
           btn.disabled = false;
           return;
         }
@@ -217,6 +217,7 @@
         redirectByRole(local.role);
         return;
       }
+      const email = loginId;
 
       // Không khớp local (hoặc chưa có) → thử API (admin bootstrap)
       try {

@@ -23,12 +23,12 @@
           <input type="text" id="name" placeholder="Họ và tên" autocomplete="name">
         </div>
         <div class="form-group">
-          <label>Email</label>
+          <label>Email <span style="color:var(--text-muted);font-weight:400">(hoặc SĐT bên dưới)</span></label>
           <input type="email" id="email" placeholder="Email nhận OTP" autocomplete="email">
         </div>
         <div class="form-group">
-          <label>Số điện thoại</label>
-          <input type="tel" id="phone" placeholder="09x..." autocomplete="tel">
+          <label>Số điện thoại <span style="color:var(--text-muted);font-weight:400">(có thể đăng ký / đăng nhập bằng SĐT)</span></label>
+          <input type="tel" id="phone" placeholder="09x... hoặc +84..." autocomplete="tel">
         </div>
         <div class="form-group">
           <label>Mật khẩu</label>
@@ -87,15 +87,44 @@
       const role = document.getElementById('role').value;
       const shopName = document.getElementById('shopName').value.trim();
 
-      if (!name || !email || !password) { toast('Điền đầy đủ thông tin', 'error'); return; }
+      if (!name || !password) { toast('Điền họ tên và mật khẩu', 'error'); return; }
+      if (!email && !phone) { toast('Cần ít nhất email hoặc số điện thoại', 'error'); return; }
+      if (phone && phone.replace(/\D/g, '').length < 9) { toast('Số điện thoại không hợp lệ', 'error'); return; }
       if (password.length < 6) { toast('Mật khẩu tối thiểu 6 ký tự', 'error'); return; }
       if (role === 'seller' && !shopName) { toast('Nhập tên gian hàng', 'error'); return; }
 
       const btn = document.getElementById('btnSend');
       btn.disabled = true;
-      btn.textContent = 'Đang gửi...';
+      btn.textContent = 'Đang xử lý...';
 
       try {
+        if (!email && phone) {
+          if (CCLStore.findUserByPhone && CCLStore.findUserByPhone(phone)) {
+            toast('Số điện thoại đã được đăng ký', 'error');
+            return;
+          }
+          const created = CCLStore.createUser({
+            name, email: '', phone, password, role, shopName, verified: true,
+          });
+          if (created.error) { toast(created.error, 'error'); return; }
+          const u = created.user;
+          CCLStore.setSession({
+            email: u.email || '',
+            name: u.name,
+            role: u.role,
+            shopId: u.shopId,
+            shopName: u.shopName,
+            phone: u.phone,
+            id: u.id,
+          });
+          toast('Đăng ký bằng SĐT thành công', 'success');
+          setTimeout(() => {
+            if (role === 'seller') location.href = '/seller.html';
+            else location.href = '/';
+          }, 600);
+          return;
+        }
+
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
