@@ -65,17 +65,31 @@
             <div class="form-field"><label>Emoji</label><input type="text" id="pEmoji" placeholder="📦" maxlength="4"></div>
           </div>
           <div class="form-field" style="margin-bottom:12px">
-            <label data-i18n="imageHint">Ảnh sản phẩm (link / chọn máy / camera)</label>
+            <label>Ảnh sản phẩm (tối đa 10) — link / máy / camera</label>
             <div class="img-upload-box">
-              <div class="img-preview" id="pImagePreview"><span style="color:var(--text-muted);font-size:0.85rem">Chưa có ảnh</span></div>
-              <div class="img-actions">
-                <input type="url" id="pImage" placeholder="https://..." data-i18n-placeholder="imageLink" style="flex:1;min-width:140px">
-                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('pImageFile').click()" data-i18n="chooseImage">Chọn ảnh</button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('pImageCamera').click()" data-i18n="takePhoto">Chụp ảnh</button>
-                <button type="button" class="btn btn-ghost btn-sm" onclick="clearProductImage()" data-i18n="clearImage">Xóa ảnh</button>
+              <div class="media-preview-grid" id="pImagesPreview"></div>
+              <div class="img-actions" style="margin-top:8px">
+                <input type="url" id="pImageUrl" placeholder="https://... (thêm link ảnh)" style="flex:1;min-width:140px">
+                <button type="button" class="btn btn-outline btn-sm" onclick="addImageFromUrl()">Thêm link</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('pImageFile').click()">Chọn ảnh</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('pImageCamera').click()">Chụp ảnh</button>
               </div>
-              <input type="file" id="pImageFile" accept="image/*" hidden>
+              <input type="file" id="pImageFile" accept="image/*" multiple hidden>
               <input type="file" id="pImageCamera" accept="image/*" capture="environment" hidden>
+              <p class="media-hint" id="pImagesCount">0/10 ảnh</p>
+            </div>
+          </div>
+          <div class="form-field" style="margin-bottom:12px">
+            <label>Video sản phẩm (tối đa 2) — máy / camera</label>
+            <div class="img-upload-box">
+              <div class="media-preview-grid" id="pVideosPreview"></div>
+              <div class="img-actions" style="margin-top:8px">
+                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('pVideoFile').click()">Chọn video</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('pVideoCamera').click()">Quay video</button>
+              </div>
+              <input type="file" id="pVideoFile" accept="video/*" multiple hidden>
+              <input type="file" id="pVideoCamera" accept="video/*" capture="environment" hidden>
+              <p class="media-hint" id="pVideosCount">0/2 video</p>
             </div>
           </div>
           <div class="form-field" style="margin-bottom:12px">
@@ -130,37 +144,11 @@
   <script src="js/app.js"></script>
   <script>
     let session = null;
+    let productImages = []; // max 10
+    let productVideos = []; // max 2
 
-    let productImageData = '';
-
-    function setImagePreview(src) {
-      productImageData = src || '';
-      const box = document.getElementById('pImagePreview');
-      if (!box) return;
-      if (src) {
-        const img = document.createElement('img');
-        img.src = src;
-        img.alt = '';
-        img.onerror = () => {
-          box.innerHTML = '<span style="color:var(--danger);font-size:0.85rem">Không tải được ảnh</span>';
-        };
-        box.innerHTML = '';
-        box.appendChild(img);
-      } else {
-        box.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">Chưa có ảnh</span>';
-      }
-    }
-
-    function clearProductImage() {
-      productImageData = '';
-      const url = document.getElementById('pImage');
-      if (url) url.value = '';
-      const f = document.getElementById('pImageFile');
-      const c = document.getElementById('pImageCamera');
-      if (f) f.value = '';
-      if (c) c.value = '';
-      setImagePreview('');
-    }
+    const MAX_IMAGES = 10;
+    const MAX_VIDEOS = 2;
 
     function compressImageFile(file, maxW, quality) {
       return new Promise((resolve, reject) => {
@@ -192,34 +180,123 @@
       });
     }
 
-    function bindImageInputs() {
-      const url = document.getElementById('pImage');
-      if (url) {
-        const applyUrl = () => {
-          const v = url.value.trim();
-          if (v) setImagePreview(v);
-          else if (!productImageData || !productImageData.startsWith('data:')) {
-            setImagePreview('');
-          }
-        };
-        url.addEventListener('change', applyUrl);
-        url.addEventListener('input', applyUrl);
-      }
-      const onFile = async (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        try {
-          toast('Đang xử lý ảnh...', 'info');
-          const data = await compressImageFile(file);
-          setImagePreview(data);
-          if (url) url.value = '';
-          toast('Đã gắn ảnh', 'success');
-        } catch (err) {
-          toast(err.message || 'Lỗi ảnh', 'error');
+    function readVideoFile(file) {
+      return new Promise((resolve, reject) => {
+        if (!file || !file.type.startsWith('video/')) {
+          reject(new Error('Không phải video'));
+          return;
         }
+        if (file.size > 40 * 1024 * 1024) {
+          reject(new Error('Video tối đa 40MB'));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Lỗi đọc video'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderImagesPreview() {
+      const box = document.getElementById('pImagesPreview');
+      const count = document.getElementById('pImagesCount');
+      if (count) count.textContent = productImages.length + '/' + MAX_IMAGES + ' ảnh';
+      if (!box) return;
+      if (!productImages.length) {
+        box.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">Chưa có ảnh</span>';
+        return;
+      }
+      box.innerHTML = productImages.map((src, i) => `
+        <div class="media-thumb">
+          <img src="${src}" alt="Ảnh ${i + 1}" onerror="this.parentElement.innerHTML='Lỗi ảnh'">
+          <button type="button" class="media-remove" onclick="removeProductImage(${i})" title="Xóa">×</button>
+        </div>
+      `).join('');
+    }
+
+    function renderVideosPreview() {
+      const box = document.getElementById('pVideosPreview');
+      const count = document.getElementById('pVideosCount');
+      if (count) count.textContent = productVideos.length + '/' + MAX_VIDEOS + ' video';
+      if (!box) return;
+      if (!productVideos.length) {
+        box.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">Chưa có video</span>';
+        return;
+      }
+      box.innerHTML = productVideos.map((src, i) => `
+        <div class="media-thumb media-thumb-video">
+          <video src="${src}" muted playsinline></video>
+          <button type="button" class="media-remove" onclick="removeProductVideo(${i})" title="Xóa">×</button>
+        </div>
+      `).join('');
+    }
+
+    function removeProductImage(i) {
+      productImages.splice(i, 1);
+      renderImagesPreview();
+    }
+    function removeProductVideo(i) {
+      productVideos.splice(i, 1);
+      renderVideosPreview();
+    }
+
+    function addImageFromUrl() {
+      const el = document.getElementById('pImageUrl');
+      const v = (el && el.value || '').trim();
+      if (!v) { toast('Nhập link ảnh', 'error'); return; }
+      if (productImages.length >= MAX_IMAGES) { toast('Tối đa ' + MAX_IMAGES + ' ảnh', 'error'); return; }
+      productImages.push(v);
+      if (el) el.value = '';
+      renderImagesPreview();
+      toast('Đã thêm ảnh', 'success');
+    }
+
+    function bindMediaInputs() {
+      const onImageFiles = async (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (!files.length) return;
+        for (const file of files) {
+          if (productImages.length >= MAX_IMAGES) {
+            toast('Tối đa ' + MAX_IMAGES + ' ảnh', 'error');
+            break;
+          }
+          try {
+            toast('Đang xử lý ảnh...', 'info');
+            const data = await compressImageFile(file);
+            productImages.push(data);
+            renderImagesPreview();
+          } catch (err) {
+            toast(err.message || 'Lỗi ảnh', 'error');
+          }
+        }
+        if (files.length) toast('Đã thêm ảnh', 'success');
       };
-      document.getElementById('pImageFile')?.addEventListener('change', onFile);
-      document.getElementById('pImageCamera')?.addEventListener('change', onFile);
+      document.getElementById('pImageFile')?.addEventListener('change', onImageFiles);
+      document.getElementById('pImageCamera')?.addEventListener('change', onImageFiles);
+
+      const onVideoFiles = async (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (!files.length) return;
+        for (const file of files) {
+          if (productVideos.length >= MAX_VIDEOS) {
+            toast('Tối đa ' + MAX_VIDEOS + ' video', 'error');
+            break;
+          }
+          try {
+            toast('Đang xử lý video...', 'info');
+            const data = await readVideoFile(file);
+            productVideos.push(data);
+            renderVideosPreview();
+          } catch (err) {
+            toast(err.message || 'Lỗi video', 'error');
+          }
+        }
+        if (files.length) toast('Đã thêm video', 'success');
+      };
+      document.getElementById('pVideoFile')?.addEventListener('change', onVideoFiles);
+      document.getElementById('pVideoCamera')?.addEventListener('change', onVideoFiles);
     }
 
 
@@ -243,7 +320,9 @@
       if (bank.name) document.getElementById('bankName').value = bank.name;
       if (bank.acc) document.getElementById('bankAcc').value = bank.acc;
       if (bank.holder) document.getElementById('bankHolder').value = bank.holder;
-      bindImageInputs();
+      bindMediaInputs();
+      renderImagesPreview();
+      renderVideosPreview();
       renderMyProducts();
       const me = CCLStore.findUserByEmail(session.email);
       if (me) {
@@ -332,10 +411,13 @@
       document.getElementById('pPrice').value = '';
       document.getElementById('pDesc').value = '';
       document.getElementById('pGuide').value = '';
-      document.getElementById('pImage').value = '';
       document.getElementById('pEmoji').value = '';
-      document.getElementById('pPrice').value = '';
-      clearProductImage();
+      const urlEl = document.getElementById('pImageUrl');
+      if (urlEl) urlEl.value = '';
+      productImages = [];
+      productVideos = [];
+      renderImagesPreview();
+      renderVideosPreview();
     }
 
     function editProduct(p) {
@@ -345,9 +427,10 @@
       document.getElementById('pCat').value = p.category || 'khac';
       document.getElementById('pDesc').value = p.description || '';
       document.getElementById('pGuide').value = p.guide || '';
-      const img0 = (p.images && p.images[0]) || '';
-      document.getElementById('pImage').value = img0.startsWith('data:') ? '' : img0;
-      setImagePreview(img0);
+      productImages = Array.isArray(p.images) ? p.images.slice(0, MAX_IMAGES) : [];
+      productVideos = Array.isArray(p.videos) ? p.videos.slice(0, MAX_VIDEOS) : [];
+      renderImagesPreview();
+      renderVideosPreview();
       document.getElementById('pPrice').value = typeof formatPriceTyping === 'function' ? formatPriceTyping(String(p.price || 0)) : (p.price || '');
       document.getElementById('pEmoji').value = p.emoji || '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -358,8 +441,6 @@
       const price = (typeof parseVNDInput === 'function' ? parseVNDInput(document.getElementById('pPrice').value) : Number(String(document.getElementById('pPrice').value).replace(/[^\d]/g, '')));
       if (!name || !(price >= 0)) { toast('Nhập tên và giá', 'error'); return; }
       const id = document.getElementById('pEditId').value || undefined;
-      const imgUrl = document.getElementById('pImage').value.trim();
-      const img = productImageData || imgUrl;
       CCLStore.saveProduct({
         id,
         shopId: session.shopId,
@@ -371,7 +452,8 @@
         category: document.getElementById('pCat').value,
         description: document.getElementById('pDesc').value.trim(),
         guide: document.getElementById('pGuide').value.trim(),
-        images: img ? [img] : [],
+        images: productImages.slice(0, MAX_IMAGES),
+        videos: productVideos.slice(0, MAX_VIDEOS),
         emoji: document.getElementById('pEmoji').value.trim() || (document.getElementById('pType').value === 'service' ? '🛠️' : '📦'),
         active: true,
       });
