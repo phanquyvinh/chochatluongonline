@@ -236,8 +236,8 @@ function renderCatalog() {
   const pg = $('#productsGrid'), sg = $('#servicesGrid');
   if (!pg || !sg) return;
   const q = getSearchQuery();
-  const minPrice = Number($('#filterMinPrice')?.value) || 0;
-  const maxPrice = Number($('#filterMaxPrice')?.value) || 0;
+  const minPrice = parseVNDInput($('#filterMinPrice')?.value) || 0;
+  const maxPrice = parseVNDInput($('#filterMaxPrice')?.value) || 0;
   const minRating = Number($('#filterMinRating')?.value) || 0;
   const sortBy = $('#filterSort')?.value || 'default';
 
@@ -405,7 +405,15 @@ function initHome() {
     if (search) search.value = searchM.value;
     renderCatalog();
   });
-  ['filterMinPrice','filterMaxPrice','filterMinRating','filterSort'].forEach((id) => {
+  ['filterMinPrice','filterMaxPrice'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      bindPriceInput(el);
+      el.addEventListener('change', () => renderCatalog());
+      el.addEventListener('input', () => renderCatalog());
+    }
+  });
+  ['filterMinRating','filterSort'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', () => renderCatalog());
   });
