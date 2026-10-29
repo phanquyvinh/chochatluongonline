@@ -36,10 +36,10 @@
         <div class="panel">
           <h2 class="panel-title">Phí vận chuyển</h2>
           <div class="form-row">
-            <div class="form-field"><label>Ship sản phẩm (đ)</label><input type="number" id="shipFeeProduct" min="0" step="1000"></div>
-            <div class="form-field"><label>Miễn ship từ (đ)</label><input type="number" id="freeShipThreshold" min="0" step="10000"></div>
-            <div class="form-field"><label>Phụ phí dịch vụ (đ)</label><input type="number" id="serviceCallOutFee" min="0" step="1000"></div>
-            <div class="form-field"><label>Đơn tối thiểu (đ)</label><input type="number" id="minOrderAmount" min="0" step="10000"></div>
+            <div class="form-field"><label>Ship sản phẩm (đ)</label><input type="text" id="shipFeeProduct" inputmode="numeric" placeholder="0" autocomplete="off"></div>
+            <div class="form-field"><label>Miễn ship từ (đ)</label><input type="text" id="freeShipThreshold" inputmode="numeric" placeholder="0" autocomplete="off"></div>
+            <div class="form-field"><label>Phụ phí dịch vụ (đ)</label><input type="text" id="serviceCallOutFee" inputmode="numeric" placeholder="0" autocomplete="off"></div>
+            <div class="form-field"><label>Đơn tối thiểu (đ)</label><input type="text" id="minOrderAmount" inputmode="numeric" placeholder="0" autocomplete="off"></div>
           </div>
           <button class="btn btn-primary" onclick="savePricing()">Lưu</button>
         </div>
@@ -139,7 +139,14 @@
       const box = document.getElementById('pImagePreview');
       if (!box) return;
       if (src) {
-        box.innerHTML = '<img src="' + src + '" alt="">';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '';
+        img.onerror = () => {
+          box.innerHTML = '<span style="color:var(--danger);font-size:0.85rem">Không tải được ảnh</span>';
+        };
+        box.innerHTML = '';
+        box.appendChild(img);
       } else {
         box.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">Chưa có ảnh</span>';
       }
@@ -189,10 +196,15 @@
     function bindImageInputs() {
       const url = document.getElementById('pImage');
       if (url) {
-        url.addEventListener('change', () => {
+        const applyUrl = () => {
           const v = url.value.trim();
           if (v) setImagePreview(v);
-        });
+          else if (!productImageData || !productImageData.startsWith('data:')) {
+            setImagePreview('');
+          }
+        };
+        url.addEventListener('change', applyUrl);
+        url.addEventListener('input', applyUrl);
       }
       const onFile = async (e) => {
         const file = e.target.files && e.target.files[0];
@@ -219,14 +231,20 @@
       if (!session.shopId && session.role === 'admin') session.shopId = 's101';
       const s = CCLConfig.loadShopSettings(session.shopId);
       document.getElementById('acceptOrders').checked = s.acceptOrders !== false;
-      document.getElementById('shipFeeProduct').value = s.shipFeeProduct || 0;
-      document.getElementById('freeShipThreshold').value = s.freeShipThreshold || 0;
-      document.getElementById('serviceCallOutFee').value = s.serviceCallOutFee || 0;
-      document.getElementById('minOrderAmount').value = s.minOrderAmount || 0;
+      const moneyIds = ['shipFeeProduct', 'freeShipThreshold', 'serviceCallOutFee', 'minOrderAmount', 'pPrice'];
+      moneyIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (id !== 'pPrice') {
+          el.value = formatPriceTyping(String(s[id] || 0));
+        }
+        bindPriceInput(el);
+      });
       const bank = JSON.parse(localStorage.getItem('ccl_bank_' + session.shopId) || '{}');
       if (bank.name) document.getElementById('bankName').value = bank.name;
       if (bank.acc) document.getElementById('bankAcc').value = bank.acc;
       if (bank.holder) document.getElementById('bankHolder').value = bank.holder;
+      bindImageInputs();
       renderMyProducts();
       const me = CCLStore.findUserByEmail(session.email);
       if (me) {
@@ -243,10 +261,10 @@
     }
     function savePricing() {
       CCLConfig.saveShopSettings(session.shopId, {
-        shipFeeProduct: document.getElementById('shipFeeProduct').value,
-        freeShipThreshold: document.getElementById('freeShipThreshold').value,
-        serviceCallOutFee: document.getElementById('serviceCallOutFee').value,
-        minOrderAmount: document.getElementById('minOrderAmount').value,
+        shipFeeProduct: parseVNDInput(document.getElementById('shipFeeProduct').value),
+        freeShipThreshold: parseVNDInput(document.getElementById('freeShipThreshold').value),
+        serviceCallOutFee: parseVNDInput(document.getElementById('serviceCallOutFee').value),
+        minOrderAmount: parseVNDInput(document.getElementById('minOrderAmount').value),
       });
       toast('Đã lưu phí vận chuyển', 'success');
     }

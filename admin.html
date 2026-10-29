@@ -81,7 +81,7 @@
           <div class="form-row">
             <div class="form-field"><label>Phí sàn (%)</label><input type="number" id="cfg_fee" min="0" max="30" step="0.1"></div>
             <div class="form-field"><label>Thuế DN (%)</label><input type="number" id="cfg_tax" min="0" max="50" step="0.5"></div>
-            <div class="form-field"><label>Ship mặc định (đ)</label><input type="number" id="cfg_ship" min="0" step="1000"></div>
+            <div class="form-field"><label>Ship mặc định (đ)</label><input type="text" id="cfg_ship" inputmode="numeric" placeholder="0" autocomplete="off"></div>
             <div class="form-field"><label>Ngày giữ escrow</label><input type="number" id="cfg_escrow" min="0" max="30"></div>
             <div class="form-field"><label>Ngày cửa sổ hoàn</label><input type="number" id="cfg_return" min="0" max="30"></div>
           </div>
@@ -161,7 +161,9 @@
       const c = CCLConfig.loadPlatformConfig();
       document.getElementById('cfg_fee').value = c.platformFeeRate * 100;
       document.getElementById('cfg_tax').value = c.corporateTaxRate * 100;
-      document.getElementById('cfg_ship').value = c.defaultShipFeePerShop;
+      const shipEl = document.getElementById('cfg_ship');
+      shipEl.value = formatPriceTyping(String(c.defaultShipFeePerShop || 0));
+      bindPriceInput(shipEl);
       document.getElementById('cfg_escrow').value = c.escrowHoldDays;
       document.getElementById('cfg_return').value = c.returnWindowDays || 3;
       refreshStats();
@@ -179,11 +181,26 @@
       const prev = document.getElementById('heroPrev' + i);
       const input = document.getElementById('heroImg' + i);
       if (prev) {
-        if (src) prev.innerHTML = '<img src="' + src + '" alt="">';
-        else prev.textContent = 'Chưa có ảnh';
+        if (src) {
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = '';
+          img.onerror = () => {
+            prev.textContent = 'Không tải được ảnh';
+          };
+          prev.innerHTML = '';
+          prev.appendChild(img);
+        } else {
+          prev.textContent = 'Chưa có ảnh';
+        }
       }
-      if (input && src && !src.startsWith('data:')) input.value = src;
-      if (input && (!src || src.startsWith('data:'))) input.value = src && src.startsWith('http') ? src : '';
+      if (input) {
+        if (src && !src.startsWith('data:')) {
+          input.value = src;
+        } else {
+          input.value = '';
+        }
+      }
     }
 
     function clearHeroSlot(i) {
@@ -235,10 +252,15 @@
           });
         }
         if (url) {
-          url.addEventListener('change', () => {
+          const applyUrl = () => {
             const v = url.value.trim();
             if (v) setHeroPreview(i, v);
-          });
+            else if (!heroData[i - 1] || !heroData[i - 1].startsWith('data:')) {
+              setHeroPreview(i, '');
+            }
+          };
+          url.addEventListener('change', applyUrl);
+          url.addEventListener('input', applyUrl);
         }
       });
     }
@@ -253,7 +275,6 @@
     }
 
     function saveHero() {
-      // ưu tiên ảnh đã upload (data) hoặc URL trong ô
       const imgs = [1, 2, 3].map((i) => {
         if (heroData[i - 1]) return heroData[i - 1];
         return (document.getElementById('heroImg' + i)?.value || '').trim();
@@ -280,7 +301,7 @@
       CCLConfig.savePlatformConfig({
         platformFeeRate: Number(document.getElementById('cfg_fee').value) / 100,
         corporateTaxRate: Number(document.getElementById('cfg_tax').value) / 100,
-        defaultShipFeePerShop: document.getElementById('cfg_ship').value,
+        defaultShipFeePerShop: parseVNDInput(document.getElementById('cfg_ship').value),
         escrowHoldDays: document.getElementById('cfg_escrow').value,
         returnWindowDays: document.getElementById('cfg_return').value,
       }, getSession()?.name || 'admin');
