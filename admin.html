@@ -29,7 +29,6 @@
         
         <div class="panel">
           <h2 class="panel-title">Ảnh banner trang chủ</h2>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">Tải ảnh từ máy hoặc dán link. Để trống ô nào thì ẩn ảnh đó.</p>
           <div class="hero-admin-row">
             <div class="hero-admin-item">
               <label>Ảnh lớn (trái)</label>
@@ -69,7 +68,7 @@
         <div class="panel">
           <h2 class="panel-title">Tài chính</h2>
           <div class="stats-grid">
-            <div class="stat-card"><div class="stat-label">GMV (mẫu)</div><div class="stat-value" id="grossSales">—</div></div>
+            <div class="stat-card"><div class="stat-label">GMV</div><div class="stat-value" id="grossSales">—</div></div>
             <div class="stat-card highlight"><div class="stat-label">Phí sàn</div><div class="stat-value" id="platformRev">—</div></div>
             <div class="stat-card"><div class="stat-label">Thuế ước tính</div><div class="stat-value" id="stateTax">—</div></div>
             <div class="stat-card"><div class="stat-label">Ròng</div><div class="stat-value" id="netProfit">—</div></div>
@@ -90,10 +89,7 @@
 
         <div class="panel">
           <h2 class="panel-title">Sản phẩm trên sàn</h2>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">
-            Sản phẩm demo (shop mẫu) chỉ dùng khi thử nghiệm. Khi đưa vào hoạt động với shop thật, hãy xóa toàn bộ demo để GMV / thuế / phí sàn tính đúng.
-          </p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             <button class="btn btn-outline btn-sm" type="button" onclick="renderAdminProducts()">Làm mới</button>
             <button class="btn btn-outline btn-sm" type="button" style="color:var(--danger);border-color:var(--danger)" onclick="clearAllDemoProducts()">Xóa toàn bộ sản phẩm demo</button>
           </div>
@@ -127,7 +123,6 @@
         
         <div class="panel">
           <h2 class="panel-title">Đối tác & khách hàng</h2>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">Email, SĐT, địa chỉ — chỉ admin xem. Đối tác tự sửa SĐT/địa chỉ tại Hồ sơ.</p>
           <div class="filters" style="margin-bottom:12px">
             <button class="chip active" type="button" onclick="filterUsers('all', this)">Tất cả</button>
             <button class="chip" type="button" onclick="filterUsers('seller', this)">Shop</button>
@@ -369,7 +364,7 @@
     }
 
     function clearAllDemoProducts() {
-      if (!confirm('Xóa toàn bộ sản phẩm demo (shop mẫu)? Thao tác này không hoàn tác. Chỉ giữ lại sản phẩm của shop thật.')) return;
+      if (!confirm('Xóa toàn bộ sản phẩm demo?')) return;
       const n = CCLStore.clearDemoProducts ? CCLStore.clearDemoProducts() : 0;
       toast(n > 0 ? ('Đã xóa ' + n + ' sản phẩm demo') : 'Không còn sản phẩm demo', 'success');
       renderAdminProducts();
