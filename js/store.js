@@ -323,9 +323,17 @@ function verifyOtp(email, code) {
 /* ---------- Session ---------- */
 function getSession() { return read(K.session, null); }
 function setSession(user) {
-  const s = { email: user.email, name: user.name, role: user.role, shopId: user.shopId, shopName: user.shopName, id: user.id };
+  const s = {
+    email: user.email || '',
+    name: user.name,
+    role: user.role,
+    shopId: user.shopId,
+    shopName: user.shopName,
+    phone: user.phone || '',
+    id: user.id,
+  };
   write(K.session, s);
-  localStorage.setItem('vq_token', 'local-' + user.id);
+  localStorage.setItem('vq_token', 'local-' + (user.id || user.email || user.phone || 'x'));
   localStorage.setItem('vq_user', JSON.stringify(s));
   return s;
 }
