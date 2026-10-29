@@ -1047,3 +1047,73 @@ table.data-table tr:hover td { background: var(--bg-muted); }
   z-index: 50;
   position: relative;
 }
+
+/* —— Banner: nút nhỏ góc phải trên, không tràn —— */
+.hero-title { display: none !important; }
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.hero-top .hero-desc {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  padding-right: 4px;
+}
+.hero-auth {
+  display: flex !important;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin-top: 0 !important;
+  flex-shrink: 0;
+  max-width: 100%;
+}
+.hero-auth.is-hidden { display: none !important; }
+.hero-auth .btn-login-cta,
+.hero-auth .btn-register-cta {
+  min-width: 0 !important;
+  width: auto !important;
+  height: 32px !important;
+  padding: 0 10px !important;
+  font-size: 0.75rem !important;
+  border-radius: 8px !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.hero-auth .btn-login-cta {
+  background: rgba(255,255,255,0.95) !important;
+  color: #0f766e !important;
+  border: 1.5px solid #fff !important;
+  box-shadow: none !important;
+}
+.hero-auth .btn-register-cta {
+  padding: 0 10px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+}
+@media (max-width: 768px) {
+  .hero-top {
+    align-items: flex-start;
+  }
+  .hero-top .hero-desc {
+    font-size: 0.8rem;
+    max-width: 42%;
+  }
+  .hero-auth .btn-login-cta,
+  .hero-auth .btn-register-cta {
+    height: 30px !important;
+    padding: 0 8px !important;
+    font-size: 0.72rem !important;
+  }
+  .header-actions .header-auth-link {
+    display: none !important;
+  }
+}
