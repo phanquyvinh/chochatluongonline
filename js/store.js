@@ -33,7 +33,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p1', shopId: 's101', shopName: 'Điện Tử Bách Khoa', sellerEmail: 'shop.dientu@example.com',
     type: 'product', name: 'Bo mạch điều khiển điều hòa Senko', price: 350000,
-    emoji: '🔌', images: [], category: 'linh-kien', rating: 4.8, sold: 126, active: true,
+    emoji: '🔌', images: [], category: 'linh-kien', rating: 4.8, sold: 126, active: true, isDemo: true,
     description: 'Bo mạch zin theo máy, kiểm tra trước khi gửi.',
     guide: 'Tắt nguồn → tháo vỏ → thay bo → đấu đúng jack → chạy thử 10 phút.',
     createdAt: '2026-01-10T00:00:00.000Z',
@@ -41,7 +41,7 @@ const SEED_PRODUCTS = [
   {
     id: 's1', shopId: 's101', shopName: 'Điện Tử Bách Khoa', sellerEmail: 'shop.dientu@example.com',
     type: 'service', name: 'Lắp đặt & đấu nối bo mạch tại nhà', price: 150000,
-    emoji: '🛠️', images: [], category: 'sua-chua', rating: 4.9, sold: 89, active: true,
+    emoji: '🛠️', images: [], category: 'sua-chua', rating: 4.9, sold: 89, active: true, isDemo: true,
     description: 'Kỹ thuật viên đến tận nơi trong nội thành.',
     guide: 'Chuẩn bị vị trí máy, ổ điện ổn định. Hẹn giờ trước 2 giờ.',
     createdAt: '2026-01-10T00:00:00.000Z',
@@ -49,7 +49,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p2', shopId: 's102', shopName: 'Điện Lạnh Hà Nội', sellerEmail: 'shop.dienlanh@example.com',
     type: 'product', name: 'Lốc máy nén tủ lạnh 750W', price: 1200000,
-    emoji: '❄️', images: [], category: 'linh-kien', rating: 4.7, sold: 54, active: true,
+    emoji: '❄️', images: [], category: 'linh-kien', rating: 4.7, sold: 54, active: true, isDemo: true,
     description: 'Lốc 750W, bảo hành 6 tháng.',
     guide: 'Chỉ lắp bởi thợ có chuyên môn gas lạnh.',
     createdAt: '2026-01-12T00:00:00.000Z',
@@ -57,7 +57,7 @@ const SEED_PRODUCTS = [
   {
     id: 's2', shopId: 's102', shopName: 'Điện Lạnh Hà Nội', sellerEmail: 'shop.dienlanh@example.com',
     type: 'service', name: 'Bảo dưỡng bơm gas vệ sinh tủ lạnh trọn gói', price: 250000,
-    emoji: '🧊', images: [], category: 'sua-chua', rating: 4.9, sold: 210, active: true,
+    emoji: '🧊', images: [], category: 'sua-chua', rating: 4.9, sold: 210, active: true, isDemo: true,
     description: 'Vệ sinh dàn, kiểm tra gas, bổ sung nếu thiếu.',
     guide: 'Thời gian ~90 phút. Để trống ngăn đá trước khi thợ đến.',
     createdAt: '2026-01-12T00:00:00.000Z',
@@ -65,7 +65,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p3', shopId: 's103', shopName: 'Kỹ Thuật Số Việt', sellerEmail: 'shop.kts@example.com',
     type: 'product', name: 'Module WiFi ESP32 cho thiết bị IoT', price: 185000,
-    emoji: '📡', images: [], category: 'linh-kien', rating: 4.6, sold: 340, active: true,
+    emoji: '📡', images: [], category: 'linh-kien', rating: 4.6, sold: 340, active: true, isDemo: true,
     description: 'ESP32 gốc, flash sẵn firmware mẫu.',
     guide: 'Cấp 5V ổn định, kết nối UART để nạp code.',
     createdAt: '2026-01-15T00:00:00.000Z',
@@ -73,7 +73,7 @@ const SEED_PRODUCTS = [
   {
     id: 's3', shopId: 's103', shopName: 'Kỹ Thuật Số Việt', sellerEmail: 'shop.kts@example.com',
     type: 'service', name: 'Lắp đặt camera an ninh 4 mắt + cấu hình app', price: 890000,
-    emoji: '📹', images: [], category: 'lap-dat', rating: 4.8, sold: 67, active: true,
+    emoji: '📹', images: [], category: 'lap-dat', rating: 4.8, sold: 67, active: true, isDemo: true,
     description: 'Trọn gói 4 camera + đầu ghi + app điện thoại.',
     guide: 'Cần sẵn nguồn và hướng treo tường. Hỗ trợ trong 7 ngày sau lắp.',
     createdAt: '2026-01-15T00:00:00.000Z',
@@ -81,7 +81,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p4', shopId: 's101', shopName: 'Điện Tử Bách Khoa', sellerEmail: 'shop.dientu@example.com',
     type: 'product', name: 'Cảm biến nhiệt độ DHT22 chính hãng', price: 95000,
-    emoji: '🌡️', images: [], category: 'linh-kien', rating: 4.5, sold: 412, active: true,
+    emoji: '🌡️', images: [], category: 'linh-kien', rating: 4.5, sold: 412, active: true, isDemo: true,
     description: 'DHT22 độ chính xác cao, có trở kéo.',
     guide: 'Nối VCC-5V, DATA-GPIO, GND. Thư viện Adafruit DHT.',
     createdAt: '2026-01-18T00:00:00.000Z',
@@ -89,7 +89,7 @@ const SEED_PRODUCTS = [
   {
     id: 's4', shopId: 's102', shopName: 'Điện Lạnh Hà Nội', sellerEmail: 'shop.dienlanh@example.com',
     type: 'service', name: 'Sửa điều hòa không lạnh', price: 200000,
-    emoji: '🔧', images: [], category: 'sua-chua', rating: 4.7, sold: 155, active: true,
+    emoji: '🔧', images: [], category: 'sua-chua', rating: 4.7, sold: 155, active: true, isDemo: true,
     description: 'Kiểm tra miễn phí nếu sử dụng dịch vụ sửa.',
     guide: 'Ghi rõ model máy khi đặt lịch.',
     createdAt: '2026-01-18T00:00:00.000Z',
@@ -130,8 +130,21 @@ function getProductsByShop(shopId) {
 function saveProduct(product) {
   const list = ensureProducts();
   const idx = list.findIndex((p) => p.id === product.id);
-  if (idx >= 0) list[idx] = { ...list[idx], ...product, updatedAt: new Date().toISOString() };
-  else list.push({ ...product, id: product.id || uid('p'), createdAt: new Date().toISOString(), active: true, rating: 0, sold: 0, reviewsCount: 0 });
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...product, updatedAt: new Date().toISOString() };
+    if (product.isDemo === undefined) list[idx].isDemo = false;
+  } else {
+    list.push({
+      ...product,
+      id: product.id || uid('p'),
+      createdAt: new Date().toISOString(),
+      active: true,
+      rating: 0,
+      sold: 0,
+      reviewsCount: 0,
+      isDemo: false,
+    });
+  }
   write(K.products, list);
   return list.find((p) => p.id === (product.id || list[list.length - 1].id));
 }
@@ -157,30 +170,96 @@ function deleteProduct(id, sellerEmail) {
   return true;
 }
 
+function getAllProductsAdmin() {
+  return ensureProducts().slice().sort((a, b) => {
+    const ta = a.createdAt || '';
+    const tb = b.createdAt || '';
+    return tb.localeCompare(ta);
+  });
+}
+
+function clearDemoProducts() {
+  const demoShopIds = new Set(['s101', 's102', 's103']);
+  const demoEmails = new Set([
+    'shop.dientu@example.com',
+    'shop.dienlanh@example.com',
+    'shop.kts@example.com',
+  ]);
+  let list = ensureProducts();
+  const before = list.length;
+  list = list.filter((p) => {
+    if (p.isDemo) return false;
+    if (demoShopIds.has(p.shopId)) return false;
+    if (p.sellerEmail && demoEmails.has(String(p.sellerEmail).toLowerCase())) return false;
+    return true;
+  });
+  write(K.products, list);
+  return before - list.length;
+}
+
+function adminDeleteProduct(id) {
+  let list = ensureProducts();
+  const before = list.length;
+  list = list.filter((x) => x.id !== id);
+  write(K.products, list);
+  return before !== list.length;
+}
+
 /* ---------- Users ---------- */
 function getUsers() { return read(K.users, []); }
 function saveUsers(list) { write(K.users, list); }
 
 function findUserByEmail(email) {
-  return getUsers().find((u) => u.email.toLowerCase() === String(email).toLowerCase());
+  if (!email) return null;
+  return getUsers().find((u) => u.email && u.email.toLowerCase() === String(email).toLowerCase());
+}
+
+function normalizePhone(phone) {
+  let p = String(phone || '').replace(/[\s.\-()]/g, '');
+  if (p.startsWith('+84')) p = '0' + p.slice(3);
+  if (p.startsWith('84') && p.length >= 10) p = '0' + p.slice(2);
+  return p;
+}
+
+function findUserByPhone(phone) {
+  const n = normalizePhone(phone);
+  if (!n || n.length < 9) return null;
+  return getUsers().find((u) => u.phone && normalizePhone(u.phone) === n);
+}
+
+function findUserByLogin(login) {
+  const s = String(login || '').trim();
+  if (!s) return null;
+  if (s.includes('@')) return findUserByEmail(s);
+  const byPhone = findUserByPhone(s);
+  if (byPhone) return byPhone;
+  return findUserByEmail(s);
 }
 
 function createUser(data) {
   const users = getUsers();
-  if (users.some((u) => u.email.toLowerCase() === data.email.toLowerCase())) {
+  const email = (data.email || '').trim().toLowerCase();
+  const phone = normalizePhone(data.phone || '');
+  if (email && users.some((u) => u.email && u.email.toLowerCase() === email)) {
     return { error: 'Email đã được đăng ký' };
+  }
+  if (phone && users.some((u) => u.phone && normalizePhone(u.phone) === phone)) {
+    return { error: 'Số điện thoại đã được đăng ký' };
+  }
+  if (!email && !phone) {
+    return { error: 'Cần email hoặc số điện thoại' };
   }
   const user = {
     id: uid('u'),
-    email: data.email.trim().toLowerCase(),
-    password: data.password, // production: bcrypt hash
-    name: data.name.trim(),
-    role: data.role || 'buyer', // buyer | seller | shipper
-    phone: data.phone || '',
+    email: email || '',
+    password: data.password,
+    name: (data.name || '').trim(),
+    role: data.role || 'buyer',
+    phone: phone || (data.phone || '').trim(),
     address: data.address || '',
     shopId: data.role === 'seller' ? uid('s') : null,
     shopName: data.role === 'seller' ? (data.shopName || data.name) : null,
-    verified: false,
+    verified: !!data.verified,
     blocked: false,
     blockReason: null,
     bombCount: 0,
@@ -203,9 +282,14 @@ function createUser(data) {
   return { user };
 }
 
-function updateUser(email, patch) {
+function updateUser(key, patch) {
   const users = getUsers();
-  const i = users.findIndex((u) => u.email.toLowerCase() === email.toLowerCase());
+  const k = String(key || '').toLowerCase();
+  const i = users.findIndex((u) =>
+    (u.email && u.email.toLowerCase() === k) ||
+    u.id === key ||
+    (u.phone && normalizePhone(u.phone) === normalizePhone(key))
+  );
   if (i < 0) return null;
   users[i] = { ...users[i], ...patch, updatedAt: new Date().toISOString() };
   saveUsers(users);
@@ -412,8 +496,8 @@ function reportBomb(email) {
 
 window.CCLStore = {
   K, uid, ensureProducts, getProducts, getProductById, getProductsByShop,
-  saveProduct, deleteProduct, hardDeleteProduct,
-  getUsers, findUserByEmail, createUser, updateUser,
+  saveProduct, deleteProduct, hardDeleteProduct, getAllProductsAdmin, clearDemoProducts, adminDeleteProduct,
+  getUsers, findUserByEmail, findUserByPhone, findUserByLogin, normalizePhone, createUser, updateUser,
   setOtp, verifyOtp,
   getSession, setSession, clearSession,
   getReviews, addReview, updateReview, deleteReview, getShopRating,
