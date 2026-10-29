@@ -33,7 +33,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p1', shopId: 's101', shopName: 'Điện Tử Bách Khoa', sellerEmail: 'shop.dientu@example.com',
     type: 'product', name: 'Bo mạch điều khiển điều hòa Senko', price: 350000,
-    emoji: '🔌', images: [], category: 'linh-kien', rating: 4.8, sold: 126, active: true, isDemo: true,
+    emoji: '🔌', images: [], videos: [], category: 'linh-kien', rating: 4.8, sold: 126, active: true, isDemo: true,
     description: 'Bo mạch zin theo máy, kiểm tra trước khi gửi.',
     guide: 'Tắt nguồn → tháo vỏ → thay bo → đấu đúng jack → chạy thử 10 phút.',
     createdAt: '2026-01-10T00:00:00.000Z',
@@ -41,7 +41,7 @@ const SEED_PRODUCTS = [
   {
     id: 's1', shopId: 's101', shopName: 'Điện Tử Bách Khoa', sellerEmail: 'shop.dientu@example.com',
     type: 'service', name: 'Lắp đặt & đấu nối bo mạch tại nhà', price: 150000,
-    emoji: '🛠️', images: [], category: 'sua-chua', rating: 4.9, sold: 89, active: true, isDemo: true,
+    emoji: '🛠️', images: [], videos: [], category: 'sua-chua', rating: 4.9, sold: 89, active: true, isDemo: true,
     description: 'Kỹ thuật viên đến tận nơi trong nội thành.',
     guide: 'Chuẩn bị vị trí máy, ổ điện ổn định. Hẹn giờ trước 2 giờ.',
     createdAt: '2026-01-10T00:00:00.000Z',
@@ -49,7 +49,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p2', shopId: 's102', shopName: 'Điện Lạnh Hà Nội', sellerEmail: 'shop.dienlanh@example.com',
     type: 'product', name: 'Lốc máy nén tủ lạnh 750W', price: 1200000,
-    emoji: '❄️', images: [], category: 'linh-kien', rating: 4.7, sold: 54, active: true, isDemo: true,
+    emoji: '❄️', images: [], videos: [], category: 'linh-kien', rating: 4.7, sold: 54, active: true, isDemo: true,
     description: 'Lốc 750W, bảo hành 6 tháng.',
     guide: 'Chỉ lắp bởi thợ có chuyên môn gas lạnh.',
     createdAt: '2026-01-12T00:00:00.000Z',
@@ -57,7 +57,7 @@ const SEED_PRODUCTS = [
   {
     id: 's2', shopId: 's102', shopName: 'Điện Lạnh Hà Nội', sellerEmail: 'shop.dienlanh@example.com',
     type: 'service', name: 'Bảo dưỡng bơm gas vệ sinh tủ lạnh trọn gói', price: 250000,
-    emoji: '🧊', images: [], category: 'sua-chua', rating: 4.9, sold: 210, active: true, isDemo: true,
+    emoji: '🧊', images: [], videos: [], category: 'sua-chua', rating: 4.9, sold: 210, active: true, isDemo: true,
     description: 'Vệ sinh dàn, kiểm tra gas, bổ sung nếu thiếu.',
     guide: 'Thời gian ~90 phút. Để trống ngăn đá trước khi thợ đến.',
     createdAt: '2026-01-12T00:00:00.000Z',
@@ -65,7 +65,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p3', shopId: 's103', shopName: 'Kỹ Thuật Số Việt', sellerEmail: 'shop.kts@example.com',
     type: 'product', name: 'Module WiFi ESP32 cho thiết bị IoT', price: 185000,
-    emoji: '📡', images: [], category: 'linh-kien', rating: 4.6, sold: 340, active: true, isDemo: true,
+    emoji: '📡', images: [], videos: [], category: 'linh-kien', rating: 4.6, sold: 340, active: true, isDemo: true,
     description: 'ESP32 gốc, flash sẵn firmware mẫu.',
     guide: 'Cấp 5V ổn định, kết nối UART để nạp code.',
     createdAt: '2026-01-15T00:00:00.000Z',
@@ -73,7 +73,7 @@ const SEED_PRODUCTS = [
   {
     id: 's3', shopId: 's103', shopName: 'Kỹ Thuật Số Việt', sellerEmail: 'shop.kts@example.com',
     type: 'service', name: 'Lắp đặt camera an ninh 4 mắt + cấu hình app', price: 890000,
-    emoji: '📹', images: [], category: 'lap-dat', rating: 4.8, sold: 67, active: true, isDemo: true,
+    emoji: '📹', images: [], videos: [], category: 'lap-dat', rating: 4.8, sold: 67, active: true, isDemo: true,
     description: 'Trọn gói 4 camera + đầu ghi + app điện thoại.',
     guide: 'Cần sẵn nguồn và hướng treo tường. Hỗ trợ trong 7 ngày sau lắp.',
     createdAt: '2026-01-15T00:00:00.000Z',
@@ -81,7 +81,7 @@ const SEED_PRODUCTS = [
   {
     id: 'p4', shopId: 's101', shopName: 'Điện Tử Bách Khoa', sellerEmail: 'shop.dientu@example.com',
     type: 'product', name: 'Cảm biến nhiệt độ DHT22 chính hãng', price: 95000,
-    emoji: '🌡️', images: [], category: 'linh-kien', rating: 4.5, sold: 412, active: true, isDemo: true,
+    emoji: '🌡️', images: [], videos: [], category: 'linh-kien', rating: 4.5, sold: 412, active: true, isDemo: true,
     description: 'DHT22 độ chính xác cao, có trở kéo.',
     guide: 'Nối VCC-5V, DATA-GPIO, GND. Thư viện Adafruit DHT.',
     createdAt: '2026-01-18T00:00:00.000Z',
@@ -89,7 +89,7 @@ const SEED_PRODUCTS = [
   {
     id: 's4', shopId: 's102', shopName: 'Điện Lạnh Hà Nội', sellerEmail: 'shop.dienlanh@example.com',
     type: 'service', name: 'Sửa điều hòa không lạnh', price: 200000,
-    emoji: '🔧', images: [], category: 'sua-chua', rating: 4.7, sold: 155, active: true, isDemo: true,
+    emoji: '🔧', images: [], videos: [], category: 'sua-chua', rating: 4.7, sold: 155, active: true, isDemo: true,
     description: 'Kiểm tra miễn phí nếu sử dụng dịch vụ sửa.',
     guide: 'Ghi rõ model máy khi đặt lịch.',
     createdAt: '2026-01-18T00:00:00.000Z',
@@ -351,12 +351,14 @@ function getReviews(filterFn) {
   return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-function addReview({ productId, shopId, userEmail, userName, rating, content }) {
+function addReview({ productId, shopId, userEmail, userName, rating, content, images, videos }) {
   const session = getSession();
   if (!session || session.role === 'seller') {
     return { error: 'Chỉ người mua đã đăng nhập mới đánh giá được' };
   }
   if (rating < 1 || rating > 5) return { error: 'Số sao từ 1 đến 5' };
+  const imgs = Array.isArray(images) ? images.filter(Boolean).slice(0, 6) : [];
+  const vids = Array.isArray(videos) ? videos.filter(Boolean).slice(0, 2) : [];
   const list = read(K.reviews, []);
   const review = {
     id: uid('rv'),
@@ -365,6 +367,8 @@ function addReview({ productId, shopId, userEmail, userName, rating, content }) 
     userName: userName || session.name,
     rating: Number(rating),
     content: String(content || '').trim(),
+    images: imgs,
+    videos: vids,
     createdAt: new Date().toISOString(),
   };
   list.push(review);
@@ -383,6 +387,8 @@ function updateReview(id, patch, actor) {
   if (!isOwner && !isAdmin) return { error: 'Không có quyền sửa' };
   if (patch.rating != null) r.rating = Math.min(5, Math.max(1, Number(patch.rating)));
   if (patch.content != null) r.content = String(patch.content).trim();
+  if (patch.images != null) r.images = Array.isArray(patch.images) ? patch.images.filter(Boolean).slice(0, 6) : [];
+  if (patch.videos != null) r.videos = Array.isArray(patch.videos) ? patch.videos.filter(Boolean).slice(0, 2) : [];
   r.updatedAt = new Date().toISOString();
   list[i] = r;
   write(K.reviews, list);
