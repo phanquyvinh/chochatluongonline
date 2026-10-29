@@ -947,6 +947,7 @@ table.data-table tr:hover td { background: var(--bg-muted); }
   margin-top: 14px;
   align-items: center;
 }
+.hero-auth.is-hidden { display: none !important; }
 .hero-auth .btn-login-cta,
 .hero-auth .btn-register-cta {
   min-width: 130px;
@@ -965,7 +966,6 @@ table.data-table tr:hover td { background: var(--bg-muted); }
   box-shadow: 0 4px 14px rgba(0,0,0,0.2);
 }
 @media (max-width: 768px) {
-  .header-auth-link { display: none !important; }
   .hero-auth {
     width: 100%;
   }
@@ -974,6 +974,10 @@ table.data-table tr:hover td { background: var(--bg-muted); }
     flex: 1;
     min-width: 0;
     justify-content: center;
+  }
+  .header-actions .header-auth-link.btn-login-cta,
+  .header-actions .header-auth-link.btn-register-cta {
+    display: inline-flex !important;
   }
 }
 @media (min-width: 769px) {
@@ -1021,3 +1025,25 @@ table.data-table tr:hover td { background: var(--bg-muted); }
   font-size: 0.85rem;
 }
 .hero-admin-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Header: nút ĐN/ĐK luôn hiện khi chưa login */
+.header-actions .user-nav-box {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.header-actions a.btn-login-cta,
+.header-actions a.btn-register-cta {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-width: 96px;
+  width: auto;
+  height: 36px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+  z-index: 50;
+  position: relative;
+}
