@@ -938,3 +938,86 @@ table.data-table tr:hover td { background: var(--bg-muted); }
   .account-dropdown { display: none !important; }
   .nav-user-desktop { display: flex !important; }
 }
+
+/* Nút đăng nhập / đăng ký trên banner — nổi bật */
+.hero-auth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  align-items: center;
+}
+.hero-auth .btn-login-cta,
+.hero-auth .btn-register-cta {
+  min-width: 130px;
+  width: auto;
+  height: 44px;
+  padding: 0 20px;
+  font-size: 0.95rem;
+  border-radius: 12px;
+}
+.hero-auth .btn-login-cta {
+  background: #fff;
+  color: #0f766e;
+  border: 2px solid #fff;
+}
+.hero-auth .btn-register-cta {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+@media (max-width: 768px) {
+  .header-auth-link { display: none !important; }
+  .hero-auth {
+    width: 100%;
+  }
+  .hero-auth .btn-login-cta,
+  .hero-auth .btn-register-cta {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+@media (min-width: 769px) {
+  .hero-auth .btn-login-cta,
+  .hero-auth .btn-register-cta {
+    min-width: 140px;
+  }
+}
+
+.hero-admin-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+.hero-admin-item label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.hero-admin-preview {
+  height: 110px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--border-strong);
+  background: var(--bg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.hero-admin-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-admin-item input[type="url"] {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.hero-admin-actions { display: flex; gap: 6px; flex-wrap: wrap; }
