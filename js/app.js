@@ -189,10 +189,8 @@ function renderUserNav() {
       document.addEventListener('click', () => dd.classList.remove('open'), { once: true });
     }
   } else {
-    // Header + banner: nút nổi bật, luôn hiện khi chưa đăng nhập
-    el.innerHTML =
-      '<a href="/login.html" class="btn btn-login-cta header-auth-link">' + tt('login', 'Đăng nhập') + '</a>' +
-      '<a href="/register.html" class="btn btn-register-cta header-auth-link">' + tt('register', 'Đăng ký') + '</a>';
+    // Nút ĐN/ĐK chỉ trên banner — header để trống khi chưa login
+    el.innerHTML = '';
   }
   const sel = document.getElementById('langSelect');
   if (sel && typeof getLang === 'function') sel.value = getLang();
