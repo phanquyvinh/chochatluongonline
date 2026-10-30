@@ -13,6 +13,27 @@
     .card-img img { border-radius: 0; }
     a.card-img, a.card-title, a.card-shop { text-decoration: none; color: inherit; }
     a.card-title:hover { color: var(--primary); }
+    /* Search gắn với bộ lọc */
+    .catalog-toolbar { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+    .catalog-search {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface, #fff); border: 1.5px solid var(--border, #e5e7eb);
+      border-radius: 12px; padding: 10px 14px;
+    }
+    .catalog-search input {
+      flex: 1; border: 0; outline: none; font: inherit; font-size: 0.95rem; background: transparent;
+    }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-bar input[type="text"] {
+      border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 10px; font: inherit; width: 110px;
+    }
+    /* Header gọn: không search trùng */
+    .header-main .search-wrap { display: none; }
+    @media (min-width: 900px) {
+      .header-main .search-wrap { display: none; }
+    }
+    .hero-market-inner { padding-top: 12px; padding-bottom: 12px; }
+    .hero-copy { display: none; }
   </style>
 </head>
 <body>
@@ -22,13 +43,9 @@
         <div class="logo-mark">CCL</div>
         <div class="logo-text-wrap">
           <div class="logo-text">chochatluong<span>online</span></div>
-          <div class="logo-tagline">Chợ linh kiện · dịch vụ kỹ thuật</div>
+          <div class="logo-tagline">Hàng hóa · Linh kiện · Dịch vụ · Ăn uống</div>
         </div>
       </a>
-      <div class="search-wrap search-lg">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ, shop..." data-i18n-placeholder="searchPlaceholder" autocomplete="off">
-      </div>
       <div class="header-actions">
         <div class="lang-slot" id="langSlot">
           <select id="langSelect" class="lang-select" onchange="setLang(this.value)" aria-label="Language">
@@ -44,31 +61,20 @@
     </div>
   </header>
 
+  <!-- Một hàng điều hướng nhanh — không lặp Đăng nhập (đã có userNav) -->
   <nav class="buyer-quicknav">
     <div class="container buyer-quicknav-inner">
-      <a href="#productsGrid" class="qnav-item">📦 Sản phẩm</a>
-      <a href="#productsGrid" class="qnav-item" onclick="setFilter('an-uong')">🍜 Ăn uống</a>
+      <a href="#catalog" class="qnav-item">📦 Sản phẩm</a>
+      <a href="#catalog" class="qnav-item" onclick="setFilter('an-uong')">🍜 Ăn uống</a>
       <a href="#shops" class="qnav-item">🏪 Gian hàng</a>
       <a href="#cart" class="qnav-item">🛍️ Giỏ hàng</a>
       <a href="/orders.html" class="qnav-item">📋 Đơn hàng</a>
-      <a href="/login.html" class="qnav-item qnav-muted">Đăng nhập</a>
     </div>
   </nav>
 
+  <!-- Banner chỉ còn ảnh — bỏ nút đăng nhập/đăng ký và ô tìm trùng -->
   <section class="hero-market">
     <div class="container hero-market-inner">
-      <div class="hero-copy">
-        <div class="hero-top">
-          <div class="hero-auth" id="heroAuth">
-            <a href="/login.html" class="btn btn-login-cta" data-i18n="login">Đăng nhập</a>
-            <a href="/register.html" class="btn btn-register-cta" data-i18n="register">Đăng ký</a>
-          </div>
-        </div>
-        <div class="hero-search">
-          <span class="search-icon">🔍</span>
-          <input type="search" id="searchInputMobile" placeholder="Tìm sản phẩm, dịch vụ, shop..." data-i18n-placeholder="searchPlaceholder" autocomplete="off">
-        </div>
-      </div>
       <div class="hero-gallery" aria-hidden="true">
         <div class="hero-shot hero-shot-1"><img id="heroImg1" src="" alt="" loading="lazy"></div>
         <div class="hero-shot hero-shot-2"><img id="heroImg2" src="" alt="" loading="lazy"></div>
@@ -78,9 +84,18 @@
   </section>
 
   <main class="container" style="padding-top:20px">
-    <section class="section">
+    <section class="section" id="catalog">
       <div class="section-header">
         <h2 class="section-title"><span class="icon">📦</span> <span data-i18n="products">Sản phẩm</span></h2>
+      </div>
+
+      <!-- Tìm kiếm + chip + giá nằm cùng khối -->
+      <div class="catalog-toolbar">
+        <div class="catalog-search">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="search" id="searchInput" placeholder="Tìm sản phẩm, dịch vụ, shop, món ăn..." data-i18n-placeholder="searchPlaceholder" autocomplete="off">
+        </div>
+
         <div class="filters">
           <button class="chip active" data-filter="all" onclick="setFilter('all')" data-i18n="all">Tất cả</button>
           <button class="chip" data-filter="product" onclick="setFilter('product')" data-i18n="products">Sản phẩm</button>
@@ -91,42 +106,41 @@
           <button class="chip" data-filter="lap-dat" onclick="setFilter('lap-dat')" data-i18n="install">Lắp đặt</button>
           <button class="chip" data-filter="an-uong" onclick="setFilter('an-uong')">🍜 Ăn uống</button>
         </div>
+
+        <div class="filter-bar">
+          <input type="text" id="filterMinPrice" placeholder="Giá từ" data-i18n-placeholder="priceFrom" inputmode="numeric" autocomplete="off">
+          <input type="text" id="filterMaxPrice" placeholder="Giá đến" data-i18n-placeholder="priceTo" inputmode="numeric" autocomplete="off">
+          <select id="filterMinRating" class="sort-select">
+            <option value="0" data-i18n-option="anyRating">Mọi đánh giá</option>
+            <option value="3">Từ 3★</option>
+            <option value="4">Từ 4★</option>
+            <option value="4.5">Từ 4.5★</option>
+          </select>
+          <select id="filterSort" class="sort-select">
+            <option value="default" data-i18n-option="sortDefault">Phù hợp nhất</option>
+            <option value="price_asc" data-i18n-option="sortPriceAsc">Giá thấp → cao</option>
+            <option value="price_desc" data-i18n-option="sortPriceDesc">Giá cao → thấp</option>
+            <option value="rating" data-i18n-option="sortRating">Đánh giá cao</option>
+            <option value="sold" data-i18n-option="sortSold">Bán chạy</option>
+            <option value="newest" data-i18n-option="sortNewest">Mới nhất</option>
+          </select>
+          <span id="resultCount" style="font-size:0.85rem;color:var(--text-muted)"></span>
+        </div>
       </div>
-      <div class="filter-bar">
-        <input type="text" id="filterMinPrice" placeholder="Giá từ" data-i18n-placeholder="priceFrom" inputmode="numeric" autocomplete="off" style="width:110px">
-        <input type="text" id="filterMaxPrice" placeholder="Giá đến" data-i18n-placeholder="priceTo" inputmode="numeric" autocomplete="off" style="width:110px">
-        <select id="filterMinRating" class="sort-select">
-          <option value="0" data-i18n-option="anyRating">Mọi đánh giá</option>
-          <option value="3">Từ 3★</option>
-          <option value="4">Từ 4★</option>
-          <option value="4.5">Từ 4.5★</option>
-        </select>
-        <select id="filterSort" class="sort-select">
-          <option value="default" data-i18n-option="sortDefault">Phù hợp nhất</option>
-          <option value="price_asc" data-i18n-option="sortPriceAsc">Giá thấp → cao</option>
-          <option value="price_desc" data-i18n-option="sortPriceDesc">Giá cao → thấp</option>
-          <option value="rating" data-i18n-option="sortRating">Đánh giá cao</option>
-          <option value="sold" data-i18n-option="sortSold">Bán chạy</option>
-          <option value="newest" data-i18n-option="sortNewest">Mới nhất</option>
-        </select>
-        <span id="resultCount" style="font-size:0.85rem;color:var(--text-muted)"></span>
-      </div>
+
       <div class="grid" id="productsGrid"></div>
     </section>
 
     <section class="section" id="shops">
       <div class="section-header">
         <h2 class="section-title"><span class="icon">🏪</span> Gian hàng</h2>
-        <div class="filters">
-          <button class="chip active" type="button" onclick="document.getElementById('shopsGrid').scrollIntoView({behavior:'smooth'})">Xem tất cả</button>
-        </div>
       </div>
       <div class="shops-row" id="shopsGrid"></div>
     </section>
 
     <section class="section">
       <div class="section-header">
-        <h2 class="section-title"><span class="icon">🛠️</span> <span data-i18n="services">Dịch vụ</span></h2>
+        <h2 class="section-title"><span class="icon">🛠️</span> <span data-i18n="services">Dịch vụ nổi bật</span></h2>
       </div>
       <div class="grid" id="servicesGrid"></div>
     </section>
