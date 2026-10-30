@@ -44,6 +44,17 @@
     </div>
   </header>
 
+  <nav class="buyer-quicknav">
+    <div class="container buyer-quicknav-inner">
+      <a href="#productsGrid" class="qnav-item">📦 Sản phẩm</a>
+      <a href="#productsGrid" class="qnav-item" onclick="setFilter('an-uong')">🍜 Ăn uống</a>
+      <a href="#shops" class="qnav-item">🏪 Gian hàng</a>
+      <a href="#cart" class="qnav-item">🛍️ Giỏ hàng</a>
+      <a href="/orders.html" class="qnav-item">📋 Đơn hàng</a>
+      <a href="/login.html" class="qnav-item qnav-muted">Đăng nhập</a>
+    </div>
+  </nav>
+
   <section class="hero-market">
     <div class="container hero-market-inner">
       <div class="hero-copy">
@@ -74,9 +85,11 @@
           <button class="chip active" data-filter="all" onclick="setFilter('all')" data-i18n="all">Tất cả</button>
           <button class="chip" data-filter="product" onclick="setFilter('product')" data-i18n="products">Sản phẩm</button>
           <button class="chip" data-filter="service" onclick="setFilter('service')" data-i18n="services">Dịch vụ</button>
+          <button class="chip" data-filter="hang-hoa" onclick="setFilter('hang-hoa')">📦 Hàng hóa</button>
           <button class="chip" data-filter="linh-kien" onclick="setFilter('linh-kien')" data-i18n="parts">Linh kiện</button>
           <button class="chip" data-filter="sua-chua" onclick="setFilter('sua-chua')" data-i18n="repair">Sửa chữa</button>
           <button class="chip" data-filter="lap-dat" onclick="setFilter('lap-dat')" data-i18n="install">Lắp đặt</button>
+          <button class="chip" data-filter="an-uong" onclick="setFilter('an-uong')">🍜 Ăn uống</button>
         </div>
       </div>
       <div class="filter-bar">
@@ -99,6 +112,16 @@
         <span id="resultCount" style="font-size:0.85rem;color:var(--text-muted)"></span>
       </div>
       <div class="grid" id="productsGrid"></div>
+    </section>
+
+    <section class="section" id="shops">
+      <div class="section-header">
+        <h2 class="section-title"><span class="icon">🏪</span> Gian hàng</h2>
+        <div class="filters">
+          <button class="chip active" type="button" onclick="document.getElementById('shopsGrid').scrollIntoView({behavior:'smooth'})">Xem tất cả</button>
+        </div>
+      </div>
+      <div class="shops-row" id="shopsGrid"></div>
     </section>
 
     <section class="section">
@@ -150,13 +173,15 @@
   <footer class="footer">
     <div class="container footer-bottom" style="border:0;margin:0;padding:0;justify-content:space-between">
       <span>© chochatluongonline</span>
-      <span>Hotline 0975 898 828</span>
+      <span>Hỗ trợ qua sàn · Hotline quản trị 0975 898 828</span>
     </div>
   </footer>
 
   <script src="js/i18n.js"></script>
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/privacy.js"></script>
+  <script src="js/chat-ui.js"></script>
   <script src="js/app.js"></script>
   <script>document.addEventListener('DOMContentLoaded', initHome);</script>
 </body>

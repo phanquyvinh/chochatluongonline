@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phòng chat đơn — chochatluongonline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .room-layout { max-width: 720px; margin: 0 auto; padding: 16px 16px 32px; }
+    .room-head { margin-bottom: 12px; }
+    .room-meta { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-top: 6px; }
+    .room-peers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .room-peer { font-size: 0.78rem; padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); }
+    .room-body { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; min-height: 360px; max-height: 55vh; overflow-y: auto; padding: 14px; }
+    .room-msg { max-width: 85%; margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; }
+    .room-msg.me { margin-left: auto; background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+    .room-msg.them { margin-right: auto; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .room-msg .meta { font-size: 0.72rem; opacity: 0.85; margin-bottom: 3px; }
+    .room-msg img { max-width: 100%; border-radius: 8px; margin-top: 4px; display: block; }
+    .room-foot { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; margin-top: 12px; align-items: end; }
+    .room-foot textarea { width: 100%; resize: none; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px; font: inherit; min-height: 44px; }
+    .room-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; }
+    .room-empty { text-align: center; color: var(--text-muted); padding: 40px 12px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="/" class="logo">
+        <div class="logo-mark">CCL</div>
+        <div class="logo-text">chochatluong<span>online</span></div>
+      </a>
+      <div class="header-actions" id="userNav"></div>
+    </div>
+  </header>
+
+  <main class="room-layout">
+    <div class="room-head">
+      <h1 style="font-size:1.15rem;margin:0" id="roomTitle">Phòng chat đơn</h1>
+      <div class="room-meta" id="roomMeta">Đang tải…</div>
+      <div class="room-peers" id="roomPeers"></div>
+    </div>
+    <div class="room-body" id="roomBody"></div>
+    <div class="room-foot">
+      <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('roomImg').click()">Ảnh</button>
+      <input type="file" id="roomImg" accept="image/*" hidden>
+      <textarea id="roomInput" rows="2" placeholder="Nhập tin nhắn — SĐT/Zalo ngoài sàn sẽ bị ẩn" maxlength="2000"></textarea>
+      <button type="button" class="btn btn-primary btn-sm" id="roomSend">Gửi</button>
+    </div>
+    <p class="room-hint" id="roomHint">
+      Phòng chat dùng chung cho khách, shop và shipper của đơn này — vào nhanh khi giao nhận, đặc biệt đơn ăn uống / ship nội thành.
+    </p>
+    <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px">
+      <a class="btn btn-ghost btn-sm" href="/orders.html">Đơn hàng</a>
+      <a class="btn btn-ghost btn-sm" id="backRole" href="/">Về chợ</a>
+    </div>
+  </main>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/privacy.js"></script>
+  <script src="js/chat-ui.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let session = null;
+    let threadId = null;
+    let pollTimer = null;
+
+    function qs(name) {
+      return new URLSearchParams(location.search).get(name);
+    }
+
+    function roleLabel(r) {
+      return ({ buyer: 'Khách', seller: 'Shop', shipper: 'Ship', admin: 'Admin' })[r] || r;
+    }
+
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      session = requireAuth(['buyer', 'seller', 'shipper', 'admin']);
+      if (!session) return;
+      renderUserNav();
+      if (session.role === 'seller') document.getElementById('backRole').href = '/seller.html';
+      if (session.role === 'shipper') document.getElementById('backRole').href = '/shipper.html';
+      if (session.role === 'admin') document.getElementById('backRole').href = '/admin.html';
+
+      const orderId = qs('order');
+      const packageId = qs('pkg');
+      if (!orderId) {
+        document.getElementById('roomMeta').textContent = 'Thiếu mã đơn. Mở chat từ trang đơn hàng.';
+        return;
+      }
+
+      const res = CCLStore.openOrderChat(orderId, packageId, {
+        email: session.email,
+        role: session.role,
+        name: session.name || session.shopName || session.email,
+      });
+      if (res.error) {
+        document.getElementById('roomMeta').textContent = res.error;
+        toast(res.error, 'error');
+        return;
+      }
+      threadId = res.thread.id;
+      document.getElementById('roomTitle').textContent = res.thread.title || ('Chat ' + orderId);
+      renderRoom();
+      pollTimer = setInterval(renderRoom, 2500);
+
+      document.getElementById('roomSend').onclick = send;
+      document.getElementById('roomInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+      });
+      document.getElementById('roomImg').addEventListener('change', onImg);
+    });
+
+    function renderRoom() {
+      if (!threadId) return;
+      const th = CCLStore.getChatThread(threadId);
+      if (!th) return;
+      const order = CCLStore.findOrder(th.orderId);
+      const pkg = order && (order.packages || []).find((p) => p.packageId === th.packageId);
+      let meta = 'Đơn ' + (th.orderId || '');
+      if (pkg) {
+        meta += ' · ' + (CCLStore.STATUS_LABEL[pkg.status] || pkg.status);
+        if (pkg.trackingNumber) meta += ' · VĐ ' + pkg.trackingNumber;
+      }
+      // Ăn uống / nội thành: gợi ý thao tác nhanh
+      const isFood = pkg && (pkg.items || []).some((i) => i.category === 'an-uong');
+      if (isFood) meta += ' · Đơn ăn uống — ưu tiên phản hồi nhanh';
+      document.getElementById('roomMeta').textContent = meta;
+
+      document.getElementById('roomPeers').innerHTML = (th.participants || []).map((p) =>
+        '<span class="room-peer">' + roleLabel(p.role) + ': ' + escapeHtml(p.name || p.email) + '</span>'
+      ).join('');
+
+      const body = document.getElementById('roomBody');
+      const me = (session.email || '').toLowerCase();
+      const msgs = th.messages || [];
+      if (!msgs.length) {
+        body.innerHTML = '<div class="room-empty">Chưa có tin nhắn.<br>Khách · Shop · Ship cùng thấy phòng này khi mở link đơn.</div>';
+        return;
+      }
+      body.innerHTML = msgs.map((m) => {
+        const mine = m.email === me;
+        return '<div class="room-msg ' + (mine ? 'me' : 'them') + '">' +
+          '<div class="meta">' + (mine ? 'Bạn' : escapeHtml(m.name || roleLabel(m.role))) +
+          ' · ' + new Date(m.at).toLocaleString('vi-VN') + '</div>' +
+          (m.text ? '<div>' + escapeHtml(m.text) + '</div>' : '') +
+          (m.image ? '<img src="' + m.image + '" alt="">' : '') +
+          '</div>';
+      }).join('');
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function send(imageDataUrl) {
+      if (!threadId) return;
+      const input = document.getElementById('roomInput');
+      const text = (input && input.value) || '';
+      const res = CCLStore.postChatMessage(threadId, {
+        email: session.email,
+        role: session.role,
+        name: session.name || session.shopName || session.email,
+        text,
+        imageDataUrl: imageDataUrl || null,
+      });
+      if (res.error) { toast(res.error, 'error'); return; }
+      if (input) input.value = '';
+      renderRoom();
+    }
+
+    function onImg(e) {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 900;
+          let w = img.width, h = img.height;
+          if (w > max || h > max) {
+            const r = Math.min(max / w, max / h);
+            w = Math.round(w * r); h = Math.round(h * r);
+          }
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          send(c.toDataURL('image/jpeg', 0.72));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    window.addEventListener('beforeunload', () => { if (pollTimer) clearInterval(pollTimer); });
+  </script>
+</body>
+</html>

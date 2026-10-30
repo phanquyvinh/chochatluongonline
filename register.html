@@ -53,8 +53,25 @@
           </select>
         </div>
         <div class="form-group" id="shopNameGroup" style="display:none">
-          <label>Tên gian hàng</label>
-          <input type="text" id="shopName" placeholder="Tên shop">
+          <label id="shopNameLabel">Tên gian hàng</label>
+          <input type="text" id="shopName" placeholder="Tên shop / đơn vị vận chuyển">
+        </div>
+        <div id="shipperExtra" style="display:none">
+          <div class="form-group">
+            <label>Loại hình</label>
+            <select id="shipperType">
+              <option value="individual">Cá nhân</option>
+              <option value="company">Doanh nghiệp / Đội ship</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Phương tiện</label>
+            <input type="text" id="vehicle" placeholder="Xe máy / Ô tô / Xe tải nhẹ...">
+          </div>
+          <div class="form-group">
+            <label>Khu vực phủ sóng</label>
+            <input type="text" id="coverage" placeholder="VD: Hà Nội, nội thành">
+          </div>
         </div>
         <button class="btn btn-primary btn-block" id="btnSend" onclick="submitRegister()">Gửi mã OTP</button>
       </div>
@@ -95,8 +112,12 @@
     }
 
     function onRoleChange() {
-      document.getElementById('shopNameGroup').style.display =
-        document.getElementById('role').value === 'seller' ? 'block' : 'none';
+      const role = document.getElementById('role').value;
+      const isSeller = role === 'seller';
+      const isShipper = role === 'shipper';
+      document.getElementById('shopNameGroup').style.display = (isSeller || isShipper) ? 'block' : 'none';
+      document.getElementById('shipperExtra').style.display = isShipper ? 'block' : 'none';
+      document.getElementById('shopNameLabel').textContent = isShipper ? 'Tên đơn vị / cá nhân ship' : 'Tên gian hàng';
     }
 
     function collectForm() {
@@ -106,13 +127,17 @@
       const password = document.getElementById('password').value;
       const role = document.getElementById('role').value;
       const shopName = document.getElementById('shopName').value.trim();
-      return { name, email, phone, password, role, shopName };
+      const shipperType = document.getElementById('shipperType')?.value || 'individual';
+      const vehicle = document.getElementById('vehicle')?.value.trim() || '';
+      const coverage = document.getElementById('coverage')?.value.trim() || '';
+      return { name, email, phone, password, role, shopName, shipperType, vehicle, coverage };
     }
 
     function validateForm(f) {
       if (!f.name || !f.password) { toast('Điền họ tên và mật khẩu', 'error'); return false; }
       if (f.password.length < 6) { toast('Mật khẩu tối thiểu 6 ký tự', 'error'); return false; }
       if (f.role === 'seller' && !f.shopName) { toast('Nhập tên gian hàng', 'error'); return false; }
+      if (f.role === 'shipper' && !f.shopName) { toast('Nhập tên đơn vị / cá nhân vận chuyển', 'error'); return false; }
       if (regMethod === 'email') {
         if (!f.email || !f.email.includes('@')) { toast('Nhập email hợp lệ', 'error'); return false; }
         if (CCLStore.findUserByEmail(f.email)) { toast('Email đã được đăng ký', 'error'); return false; }
@@ -199,6 +224,9 @@
         password: f.password,
         role: f.role,
         shopName: f.shopName,
+        shipperType: f.shipperType,
+        vehicle: f.vehicle,
+        coverage: f.coverage,
         verified: true,
       });
       if (created.error) {
@@ -216,6 +244,12 @@
         id: u.id,
       });
       return true;
+    }
+
+    function redirectByRole(role) {
+      if (role === 'seller') location.href = '/seller.html';
+      else if (role === 'shipper') location.href = '/shipper.html';
+      else location.href = '/';
     }
 
     async function submitOtp() {
@@ -237,10 +271,7 @@
           }
           if (!finishLocalRegister(pending)) return;
           toast('Đăng ký thành công', 'success');
-          setTimeout(() => {
-            if (pending.role === 'seller') location.href = '/seller.html';
-            else location.href = '/';
-          }, 500);
+          setTimeout(() => redirectByRole(pending.role), 500);
           return;
         }
 
@@ -265,6 +296,9 @@
             role: u.role || pending.role,
             shopName: u.shopName || pending.shopName,
             phone: u.phone || pending.phone || '',
+            shipperType: pending.shipperType,
+            vehicle: pending.vehicle,
+            coverage: pending.coverage,
             verified: true,
           });
           if (created.error) { toast(created.error, 'error'); return; }
@@ -298,8 +332,7 @@
         toast('Đăng ký thành công', 'success');
         setTimeout(() => {
           const role = (local && local.role) || u.role || pending.role;
-          if (role === 'seller') location.href = '/seller.html';
-          else location.href = '/';
+          redirectByRole(role);
         }, 500);
       } catch (e) {
         toast('Lỗi kết nối máy chủ', 'error');

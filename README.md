@@ -8,6 +8,9 @@ Nền tảng của **Phan Quý Vinh**.
 - Gian hàng seller: đăng SP/DV, giá, tối đa 10 ảnh + 2 video (máy/camera/link), mô tả, hướng dẫn, phí ship riêng
 - Trang sản phẩm & shop: đánh giá sao + bình luận + ảnh/video (upload máy hoặc camera); buyer/admin xóa sửa
 - Giỏ hàng, escrow, yêu cầu hoàn khi chưa giải ngân
+- **Vận đơn nội bộ**: lifecycle đầy đủ (chờ xác nhận → chuẩn bị → chờ lấy → ship nhận → đang giao → thành công / hoàn)
+- **Shipper portal** (`/shipper.html`): cá nhân hoặc đơn vị đăng ký, nhận kiện, cập nhật trạng thái, timeline
+- Buyer tracking timeline + mã vận đơn; Shop xác nhận / sẵn sàng lấy / xử lý hủy
 - Admin: cấu hình phí/thuế/ship, chặn seller gian lận / buyer bom hàng
 
 ## Deploy

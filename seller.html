@@ -26,10 +26,26 @@
 
     <div class="dash-body">
       <div class="container">
+        <div class="ws-banner" id="wsBanner">
+          <button type="button" class="btn btn-outline btn-sm ws-banner-edit" onclick="editWsBanner()">Đổi ảnh bìa gian hàng</button>
+        </div>
+        <nav class="ws-menu">
+          <span class="ws-group-label">Bán hàng</span>
+          <a class="ws-item" href="#sellerOrders">Đơn hàng</a>
+          <a class="ws-item" href="#myProductsGrid">Sản phẩm</a>
+          <span class="ws-group-label">Cấu hình</span>
+          <a class="ws-item" href="#acceptOrders">Phí & vận chuyển</a>
+          <a class="ws-item" href="#sellerPhone">Liên hệ / NH</a>
+          <a class="ws-item" href="/">Về chợ</a>
+        </nav>
         <div class="panel">
           <h2 class="panel-title">Trạng thái</h2>
           <label style="display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer">
             <input type="checkbox" id="acceptOrders" onchange="toggleAccept()"> Đang nhận đơn
+          </label>
+          <div id="feeModelInfo" style="margin-top:12px;font-size:0.88rem;color:var(--text-secondary);line-height:1.5"></div>
+          <label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:0.9rem;cursor:pointer">
+            <input type="checkbox" id="selfShipEnabled" onchange="toggleSelfShip()"> Cho phép tự ship ngoài sàn
           </label>
         </div>
 
@@ -45,6 +61,14 @@
         </div>
 
         <div class="panel">
+          <h2 class="panel-title">Đơn hàng gian hàng</h2>
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">
+            Xác nhận → Chuẩn bị → Sẵn sàng lấy hàng. Shipper sẽ nhận kiện khi bạn đánh dấu sẵn sàng.
+          </p>
+          <div id="sellerOrders"></div>
+        </div>
+
+        <div class="panel">
           <h2 class="panel-title">Đăng sản phẩm / dịch vụ</h2>
           <div class="form-row">
             <div class="form-field" style="flex:2"><label>Tên</label><input type="text" id="pName" placeholder="Tên sản phẩm hoặc dịch vụ"></div>
@@ -56,9 +80,11 @@
           <div class="form-row">
             <div class="form-field"><label>Danh mục</label>
               <select id="pCat">
-                <option value="linh-kien">Linh kiện</option>
-                <option value="sua-chua">Sửa chữa</option>
-                <option value="lap-dat">Lắp đặt</option>
+                <option value="hang-hoa">📦 Hàng hóa / Sản phẩm</option>
+                <option value="linh-kien">🔌 Linh kiện</option>
+                <option value="sua-chua">🛠️ Sửa chữa (dịch vụ)</option>
+                <option value="lap-dat">📹 Lắp đặt (dịch vụ)</option>
+                <option value="an-uong">🍜 Ăn uống (giao tận nơi)</option>
                 <option value="khac">Khác</option>
               </select>
             </div>
@@ -141,6 +167,8 @@
   <script src="js/i18n.js"></script>
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/privacy.js"></script>
+  <script src="js/chat-ui.js"></script>
   <script src="js/app.js"></script>
   <script>
     let session = null;
@@ -307,6 +335,30 @@
       if (!session.shopId && session.role === 'admin') session.shopId = 's101';
       const s = CCLConfig.loadShopSettings(session.shopId);
       document.getElementById('acceptOrders').checked = s.acceptOrders !== false;
+      const selfEl = document.getElementById('selfShipEnabled');
+      if (selfEl) selfEl.checked = s.selfShipEnabled !== false;
+      const feeInfo = document.getElementById('feeModelInfo');
+      if (feeInfo) {
+        const model = s.feeModel || 'monthly';
+        const modelLabel = { monthly: 'Phí tháng cố định', commission: 'Hoa hồng % doanh thu', hybrid: 'Phí tháng + hoa hồng' }[model] || model;
+        let line = 'Mô hình phí sàn: <strong>' + modelLabel + '</strong>';
+        if (model === 'monthly' || model === 'hybrid') {
+          line += ' · ' + formatVND(s.monthlyFee || 0) + '/tháng';
+          if (s.monthlyFeePaidUntil) {
+            const active = CCLConfig.isMonthlyFeeActive(s);
+            line += active
+              ? ' · <span style="color:var(--success,#16a34a)">Đã đóng đến ' + new Date(s.monthlyFeePaidUntil).toLocaleDateString('vi-VN') + '</span>'
+              : ' · <span style="color:var(--warning)">Hết hạn phí tháng</span>';
+          } else {
+            line += ' · <span style="color:var(--warning)">Chưa ghi nhận đóng phí tháng</span>';
+          }
+        }
+        if (model === 'commission' || model === 'hybrid') {
+          const rate = s.commissionRate != null ? s.commissionRate : (CCLConfig.loadPlatformConfig().platformFeeRate || 0);
+          line += ' · HH ' + (rate * 100).toFixed(2) + '%';
+        }
+        feeInfo.innerHTML = line + '<br><span style="font-size:0.8rem">Admin sàn cấu hình mô hình phí cho từng gian hàng.</span>';
+      }
       const moneyIds = ['shipFeeProduct', 'freeShipThreshold', 'serviceCallOutFee', 'minOrderAmount', 'pPrice'];
       moneyIds.forEach((id) => {
         const el = document.getElementById(id);
@@ -324,6 +376,8 @@
       renderImagesPreview();
       renderVideosPreview();
       renderMyProducts();
+      renderSellerOrders();
+      applyWsBanner();
       const me = CCLStore.findUserByEmail(session.email);
       if (me) {
         const ph = document.getElementById('sellerPhone');
@@ -333,9 +387,160 @@
       }
     }
 
+    function sellerStatusLabel(st) {
+      return (CCLStore.STATUS_LABEL && CCLStore.STATUS_LABEL[st]) || st;
+    }
+
+    function renderSellerOrders() {
+      const el = document.getElementById('sellerOrders');
+      if (!el) return;
+      const orders = CCLStore.getOrdersForShop(session.shopId, session.email);
+      if (!orders.length) {
+        el.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem">Chưa có đơn nào.</p>';
+        return;
+      }
+      let html = '';
+      orders.forEach((o) => {
+        (o.packages || []).forEach((pkg) => {
+          if (pkg.shopId !== session.shopId && pkg.sellerEmail !== session.email) return;
+          const items = (pkg.items || []).map((i) => i.name + ' ×' + (i.qty || 1)).join(', ');
+          let actions = '';
+          if (pkg.status === 'pending_confirm' || pkg.status === 'held') {
+            actions = '<button class="btn btn-primary btn-sm" onclick="shopConfirm(\\'' + o.id + '\\',\\'' + pkg.packageId + '\\')">Xác nhận đơn</button> ' +
+              '<button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="shopCancel(\\'' + o.id + '\\')">Hủy đơn</button>';
+          } else if (pkg.status === 'preparing') {
+            actions = '<button class="btn btn-primary btn-sm" onclick="shopReady(\\'' + o.id + '\\',\\'' + pkg.packageId + '\\')">Giao ship sàn lấy</button> ' +
+              '<button class="btn btn-outline btn-sm" onclick="shopSelfStart(\\'' + o.id + '\\',\\'' + pkg.packageId + '\\')">Tự ship (ngoài sàn)</button>';
+          } else if (pkg.status === 'ready_for_pickup') {
+            actions = '<span class="status-pill status-pending">Chờ shipper sàn đến lấy</span> ' +
+              '<button class="btn btn-outline btn-sm" onclick="shopSelfStart(\\'' + o.id + '\\',\\'' + pkg.packageId + '\\')">Chuyển sang tự ship</button>';
+          } else if (pkg.status === 'out_for_delivery' && pkg.carrier === 'self') {
+            actions = '<button class="btn btn-primary btn-sm" onclick="shopSelfDeliver(\\'' + o.id + '\\',\\'' + pkg.packageId + '\\')">Đã giao (kèm ảnh)</button>';
+          } else if (pkg.status === 'cancel_requested' && o.cancelRequest && o.cancelRequest.status === 'pending') {
+            actions = '<button class="btn btn-primary btn-sm" onclick="shopResolveCancel(\\'' + o.id + '\\',true)">Duyệt hủy</button> ' +
+              '<button class="btn btn-outline btn-sm" onclick="shopResolveCancel(\\'' + o.id + '\\',false)">Từ chối hủy</button>';
+          } else {
+            actions = '<span class="status-pill status-pending">' + sellerStatusLabel(pkg.status) + '</span>';
+            if (pkg.carrier === 'self') actions += ' <span style="font-size:0.8rem;color:var(--text-secondary)">Shop tự giao</span>';
+            else if (pkg.shipperName) actions += ' <span style="font-size:0.8rem;color:var(--text-secondary)">Ship: ' + pkg.shipperName + '</span>';
+          }
+          html += '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">' +
+            '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">' +
+              '<strong>' + o.id + '</strong>' +
+              '<span class="status-pill status-pending">' + sellerStatusLabel(pkg.status) + '</span>' +
+            '</div>' +
+            '<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px">' +
+              new Date(o.createdAt).toLocaleString('vi-VN') + ' · ' + (o.buyerName || 'Khách') +
+              (function(){
+                var allow = window.CCLPrivacy ? CCLPrivacy.canShopSeeBuyerContact(o) : false;
+                var ph = window.CCLPrivacy ? CCLPrivacy.revealPhone(o.buyerPhone, allow) : (o.buyerPhone || '');
+                return ph && ph !== '—' ? ' · <span class="' + (allow?'':'contact-masked') + '">' + ph + '</span>' : '';
+              })() +
+            '</div>' +
+            '<div style="font-size:0.9rem;margin-bottom:8px">' + items + '</div>' +
+            (pkg.trackingNumber ? '<div style="font-size:0.85rem;margin-bottom:6px">Mã VĐ: <code>' + pkg.trackingNumber + '</code></div>' : '') +
+            '<div style="display:flex;flex-wrap:wrap;gap:8px">' + actions + ' <button class="btn btn-ghost btn-sm" onclick="openOrderChat(\'' + o.id + '\',\'' + pkg.packageId + '\')">Chat</button></div>' +
+          '</div>';
+        });
+      });
+      el.innerHTML = html || '<p style="color:var(--text-muted);font-size:0.9rem">Không có kiện thuộc gian hàng.</p>';
+    }
+
+    function approveShipper(orderId, packageId) {
+      const list = (CCLStore.listShippersRanked && CCLStore.listShippersRanked()) || [];
+      const external = list.filter((s) => !CCLStore.isPlatformBondedShipper(s));
+      if (!external.length) { toast('Chưa có shipper ngoài (cần thế chấp)', 'error'); return; }
+      const lines = external.map((s, i) =>
+        (i + 1) + '. ' + (s.shopName || s.name || s.email) + ' — thế chấp ' + formatVND(s.shipDepositBalance || 0)
+      ).join('\n');
+      const pick = prompt('Chọn số thứ tự shipper để duyệt theo thế chấp:\n' + lines, '1');
+      if (pick === null) return;
+      const idx = (parseInt(pick, 10) || 1) - 1;
+      const sh = external[idx];
+      if (!sh) { toast('Không hợp lệ', 'error'); return; }
+      const res = CCLStore.shopApproveShipperForPackage(orderId, packageId, sh.email, session.email);
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã duyệt shipper theo thế chấp', 'success'); renderSellerOrders(); }
+    }
+    function openOrderChat(orderId, packageId) {
+      location.href = '/chat-room.html?order=' + encodeURIComponent(orderId) +
+        (packageId ? '&pkg=' + encodeURIComponent(packageId) : '');
+    }
+    function shopConfirm(orderId, packageId) {
+      const res = CCLStore.shopConfirmPackage(orderId, packageId, session.email);
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã xác nhận đơn', 'success'); renderSellerOrders(); }
+    }
+    function shopReady(orderId, packageId) {
+      const res = CCLStore.shopReadyForPickup(orderId, packageId, session.email);
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã sẵn sàng — chờ shipper nhận', 'success'); renderSellerOrders(); }
+    }
+    function shopSelfStart(orderId, packageId) {
+      if (!confirm('Bạn sẽ tự giao hàng ngoài mạng lưới ship của sàn. Tiếp tục?')) return;
+      const res = CCLStore.shopSelfShipStart(orderId, packageId, session.email);
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã chuyển sang tự giao', 'success'); renderSellerOrders(); }
+    }
+    function shopSelfDeliver(orderId, packageId) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.onchange = async () => {
+        const files = [...(input.files || [])].slice(0, 4);
+        if (!files.length) { toast('Cần chọn ảnh chứng từ', 'error'); return; }
+        const imgs = [];
+        for (const file of files) {
+          const data = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const img = new Image();
+              img.onload = () => {
+                const max = 1000;
+                let w = img.width, h = img.height;
+                if (w > max || h > max) {
+                  const r = Math.min(max / w, max / h);
+                  w = Math.round(w * r); h = Math.round(h * r);
+                }
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(c.toDataURL('image/jpeg', 0.72));
+              };
+              img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+          });
+          imgs.push(data);
+        }
+        const res = CCLStore.shopSelfShipDeliver(orderId, packageId, session.email, imgs);
+        if (res.error) toast(res.error, 'error');
+        else { toast('Đã xác nhận giao hàng', 'success'); renderSellerOrders(); }
+      };
+      input.click();
+    }
+    function shopCancel(orderId) {
+      const reason = prompt('Lý do hủy:');
+      if (reason === null) return;
+      const res = CCLStore.requestCancel(orderId, session.email, 'seller', reason || 'Shop hủy');
+      if (res.error) toast(res.error, 'error');
+      else { toast(res.mode === 'direct' ? 'Đã hủy đơn' : 'Đã gửi yêu cầu hủy', 'success'); renderSellerOrders(); }
+    }
+    function shopResolveCancel(orderId, approve) {
+      const note = approve ? 'Shop đồng ý hủy' : (prompt('Lý do từ chối:') || 'Từ chối');
+      const res = CCLStore.resolveCancelRequest(orderId, approve, session.email, note);
+      if (res.error) toast(res.error, 'error');
+      else { toast(approve ? 'Đã duyệt hủy' : 'Đã từ chối hủy', 'success'); renderSellerOrders(); }
+    }
+
     function toggleAccept() {
       CCLConfig.saveShopSettings(session.shopId, { acceptOrders: document.getElementById('acceptOrders').checked });
       toast('Đã cập nhật', 'info');
+    }
+    function toggleSelfShip() {
+      CCLConfig.saveShopSettings(session.shopId, { selfShipEnabled: document.getElementById('selfShipEnabled').checked });
+      toast('Đã cập nhật tùy chọn tự ship', 'info');
     }
     function savePricing() {
       CCLConfig.saveShopSettings(session.shopId, {
@@ -409,7 +614,7 @@
       document.getElementById('pEditId').value = '';
       document.getElementById('pName').value = '';
       document.getElementById('pPrice').value = '';
-      document.getElementById('pDesc').value = '';
+      (window.CCLPrivacy ? CCLPrivacy.scrubPublicText(document.getElementById('pDesc').value) : document.getElementById('pDesc').value) = '';
       document.getElementById('pGuide').value = '';
       document.getElementById('pEmoji').value = '';
       const urlEl = document.getElementById('pImageUrl');
@@ -450,8 +655,8 @@
         name,
         price,
         category: document.getElementById('pCat').value,
-        description: document.getElementById('pDesc').value.trim(),
-        guide: document.getElementById('pGuide').value.trim(),
+        description: (window.CCLPrivacy ? CCLPrivacy.scrubPublicText(document.getElementById('pDesc').value) : document.getElementById('pDesc').value).trim(),
+        guide: (window.CCLPrivacy ? CCLPrivacy.scrubPublicText(document.getElementById('pGuide').value) : document.getElementById('pGuide').value).trim(),
         images: productImages.slice(0, MAX_IMAGES),
         videos: productVideos.slice(0, MAX_VIDEOS),
         emoji: document.getElementById('pEmoji').value.trim() || (document.getElementById('pType').value === 'service' ? '🛠️' : '📦'),
@@ -476,6 +681,43 @@
       toast('Đã hủy sản phẩm', 'info');
       resetProductForm();
       renderMyProducts();
+    }
+
+    function applyWsBanner() {
+      if (!window.CCLPrivacy || !session) return;
+      const ui = CCLPrivacy.loadWorkspaceUI('seller', session.email);
+      const el = document.getElementById('wsBanner');
+      if (el && ui.banner) {
+        el.style.backgroundImage = 'url(' + ui.banner + ')';
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      }
+    }
+    function editWsBanner() {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            const maxW = 1200;
+            let w = img.width, h = img.height;
+            if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            CCLPrivacy.saveWorkspaceUI('seller', session.email, { banner: c.toDataURL('image/jpeg', 0.75) });
+            applyWsBanner();
+            toast('Đã cập nhật ảnh bìa', 'success');
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
     }
 
     document.addEventListener('DOMContentLoaded', init);

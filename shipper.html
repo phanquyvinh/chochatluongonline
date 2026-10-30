@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vận chuyển — chochatluongonline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .ship-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+    .ship-stat { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
+    .ship-stat .num { font-size:1.6rem; font-weight:800; color:var(--primary); }
+    .ship-stat .lbl { font-size:0.8rem; color:var(--text-muted); margin-top:4px; }
+    .pkg-card { border:1.5px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; background:var(--surface); }
+    .pkg-card.mine { border-color: var(--primary); box-shadow:0 0 0 1px var(--primary-soft, rgba(37,99,235,.15)); }
+    .pkg-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .pkg-meta { font-size:0.85rem; color:var(--text-secondary); line-height:1.5; }
+    .pkg-items { font-size:0.9rem; margin:10px 0; padding-left:18px; }
+    .pkg-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .timeline { border-left:2px solid var(--border); margin:12px 0 0 8px; padding-left:14px; }
+    .timeline-item { position:relative; padding-bottom:12px; font-size:0.85rem; }
+    .timeline-item::before { content:''; position:absolute; left:-19px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--primary); border:2px solid var(--surface); }
+    .timeline-item .t-time { color:var(--text-muted); font-size:0.78rem; }
+    .tab-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+    .tab-bar .chip.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .addr-box { background:var(--bg); border-radius:8px; padding:10px 12px; font-size:0.88rem; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="dash-layout">
+    <header class="dash-header">
+      <div class="container dash-header-inner">
+        <div class="dash-title">
+          <a href="/" class="logo" style="margin-right:8px"><div class="logo-mark">CCL</div></a>
+          Vận chuyển
+          <span class="dash-badge" style="background:#0ea5e9;color:#fff">Shipper</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="shipperName" style="font-size:0.9rem;color:var(--text-secondary)"></span>
+          <a href="/" class="btn btn-ghost btn-sm">Trang chủ</a>
+          <a href="/profile.html" class="btn btn-ghost btn-sm">Hồ sơ</a>
+          <button class="btn btn-outline btn-sm" onclick="logout()">Thoát</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="dash-body">
+      <div class="container" style="padding-bottom:48px">
+        <div class="ws-banner" id="wsBanner">
+          <button type="button" class="btn btn-outline btn-sm ws-banner-edit" onclick="editWsBanner()">Đổi ảnh bìa</button>
+        </div>
+        <nav class="ws-menu">
+          <span class="ws-group-label">Vận hành</span>
+          <button type="button" class="ws-item active" data-tab="available" onclick="switchTab('available',null);setWsActive(this)">Đơn chờ lấy</button>
+          <button type="button" class="ws-item" data-tab="mine" onclick="switchTab('mine',null);setWsActive(this)">Đang giao</button>
+          <button type="button" class="ws-item" data-tab="history" onclick="switchTab('history',null);setWsActive(this)">Lịch sử</button>
+          <span class="ws-group-label">Tài khoản</span>
+          <a class="ws-item" href="/profile.html">Hồ sơ</a>
+          <a class="ws-item" href="/">Về chợ</a>
+        </nav>
+        <div id="shipFeeInfo" class="panel" style="margin-bottom:14px;font-size:0.88rem;line-height:1.5"></div>
+        <div class="ship-stats" id="stats"></div>
+
+        <div class="tab-bar">
+          <button class="chip active" data-tab="available" onclick="switchTab('available',this)">Đơn chờ lấy</button>
+          <button class="chip" data-tab="mine" onclick="switchTab('mine',this)">Đơn đang giao</button>
+          <button class="chip" data-tab="history" onclick="switchTab('history',this)">Lịch sử</button>
+        </div>
+
+        <div id="listArea"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/privacy.js"></script>
+  <script src="js/chat-ui.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentTab = 'available';
+    let session = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      session = requireAuth(['shipper', 'admin']);
+      if (!session) return;
+      const u = CCLStore.findUserByEmail(session.email) || session;
+      document.getElementById('shipperName').textContent =
+        (u.shopName || u.name || session.email) + (u.shipperType === 'company' ? ' (Đơn vị)' : '');
+      applyWsBanner();
+      renderShipFeeInfo();
+      renderStats();
+      renderList();
+    });
+
+
+    function renderShipFeeInfo() {
+      const el = document.getElementById('shipFeeInfo');
+      if (!el || !session) return;
+      const u = CCLStore.findUserByEmail(session.email) || {};
+      const platform = CCLConfig.loadPlatformConfig();
+      const monthly = platform.defaultShipperMonthlyFee || 150000;
+      const feeOk = CCLStore.isShipperFeeActive && CCLStore.isShipperFeeActive(u);
+      const bal = u.shipDepositBalance || 0;
+      const req = u.shipDepositRequired || platform.defaultShipperDeposit || 500000;
+      el.innerHTML = '<strong>Tài khoản shipper</strong><br>' +
+        ((u.shipContractWithPlatform || u.shipPlatformBonded)
+          ? '✅ Ship <strong>ký HĐ/thế chấp với sàn</strong> — nhận đơn trực tiếp; sàn chịu trách nhiệm với shop.'
+          : feeOk
+            ? '✅ Đã đóng <strong>phí tháng đăng ký sàn</strong> đến ' + new Date(u.shipFeePaidUntil).toLocaleDateString('vi-VN') + ' (phí này khác thế chấp).'
+            : '⚠️ Chưa đóng phí tháng đăng ký sàn (' + formatVND(monthly) + '/tháng).') +
+        '<br>Thế chấp hàng hóa: <strong>' + formatVND(bal) + '</strong>' +
+        (u.shipContractWithPlatform || u.shipPlatformBonded
+          ? ' (đã bond sàn)'
+          : ' — khóa <strong>100% giá hàng</strong> khi nhận kiện, hoàn khi giao xong / hàng về shop') +
+        (bal >= req && bal > 0 ? ' ✅' : ' — cần nạp thêm') +
+        '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">' +
+          '<button type="button" class="btn btn-primary btn-sm" onclick="payShipMonth()">Đóng phí tháng (mô phỏng)</button>' +
+          '<button type="button" class="btn btn-outline btn-sm" onclick="topupDeposit()">Nạp thế chấp (mô phỏng)</button> ' +
+          '<button type="button" class="btn btn-outline btn-sm" onclick="bondPlatform()">Đánh dấu HĐ với sàn (demo)</button>' +
+        '</div>';
+    }
+    function payShipMonth() {
+      const res = CCLStore.markShipperMonthlyPaid(session.email, 1);
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã ghi nhận đóng phí tháng — ưu tiên nhận đơn', 'success'); renderShipFeeInfo(); }
+    }
+    function bondPlatform() {
+      if (!CCLStore.setPlatformShipperBond) { toast('Chưa hỗ trợ', 'error'); return; }
+      const res = CCLStore.setPlatformShipperBond(session.email, true, 'Demo contract');
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã gắn HĐ/thế chấp với sàn (demo)', 'success'); renderShipFeeInfo(); }
+    }
+    function topupDeposit() {
+      const platform = CCLConfig.loadPlatformConfig();
+      const u = CCLStore.findUserByEmail(session.email) || {};
+      const req = u.shipDepositRequired || platform.defaultShipperDeposit || 500000;
+      const add = prompt('Nhập số tiền nạp thế chấp (đ)', String(req));
+      if (add === null) return;
+      const bal = (u.shipDepositBalance || 0) + (parseInt(String(add).replace(/\D/g,''),10) || 0);
+      const res = CCLStore.setShipperDeposit(session.email, bal, req);
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã cập nhật thế chấp', 'success'); renderShipFeeInfo(); }
+    }
+
+    function switchTab(tab, btn) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-bar .chip').forEach((c) => c.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      document.querySelectorAll('.ws-menu .ws-item[data-tab]').forEach((c) => {
+        c.classList.toggle('active', c.dataset.tab === tab);
+      });
+      renderList();
+    }
+    function setWsActive(el) {
+      document.querySelectorAll('.ws-menu .ws-item[data-tab]').forEach((c) => c.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+    function applyWsBanner() {
+      if (!window.CCLPrivacy || !session) return;
+      const ui = CCLPrivacy.loadWorkspaceUI('shipper', session.email);
+      const el = document.getElementById('wsBanner');
+      if (el && ui.banner) {
+        el.style.backgroundImage = 'url(' + ui.banner + ')';
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      }
+    }
+    function editWsBanner() {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            const maxW = 1200;
+            let w = img.width, h = img.height;
+            if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            const data = c.toDataURL('image/jpeg', 0.75);
+            CCLPrivacy.saveWorkspaceUI('shipper', session.email, { banner: data });
+            applyWsBanner();
+            toast('Đã cập nhật ảnh bìa', 'success');
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    }
+
+    function renderStats() {
+      const ready = CCLStore.getPackagesReadyForPickup().length;
+      const mine = CCLStore.getPackagesForShipper(session.email);
+      const hist = CCLStore.getShipperHistory(session.email);
+      const delivered = hist.filter((x) => x.package.status === 'delivered').length;
+      document.getElementById('stats').innerHTML = `
+        <div class="ship-stat"><div class="num">${ready}</div><div class="lbl">Chờ lấy hàng</div></div>
+        <div class="ship-stat"><div class="num">${mine.length}</div><div class="lbl">Đang phụ trách</div></div>
+        <div class="ship-stat"><div class="num">${delivered}</div><div class="lbl">Đã giao thành công</div></div>
+        <div class="ship-stat"><div class="num">${hist.length}</div><div class="lbl">Tổng đã nhận</div></div>
+      `;
+    }
+
+    function statusPill(st) {
+      const label = (CCLStore.STATUS_LABEL && CCLStore.STATUS_LABEL[st]) || st;
+      const cls = {
+        ready_for_pickup: 'status-pending',
+        picked_up: 'status-pending',
+        in_transit: 'status-pending',
+        out_for_delivery: 'status-pending',
+        delivered: 'status-released',
+        delivery_failed: 'status-held',
+        returning: 'status-held',
+        returned_to_seller: 'status-done',
+        cancelled: 'status-done',
+      }[st] || 'status-pending';
+      return `<span class="status-pill ${cls}">${label}</span>`;
+    }
+
+    function renderTimeline(pkg) {
+      const tl = (pkg.timeline || []).slice().reverse();
+      if (!tl.length) return '';
+      return `<div class="timeline">${tl.map((e) => `
+        <div class="timeline-item">
+          <div class="t-time">${new Date(e.at).toLocaleString('vi-VN')} · ${e.byName || e.byRole}</div>
+          <div>${e.note || e.event}</div>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    function pkgCard(order, pkg, mode) {
+      const items = (pkg.items || []).map((i) =>
+        `<li>${i.name} × ${i.qty || 1}</li>`
+      ).join('');
+      const allowContact = window.CCLPrivacy
+        ? CCLPrivacy.canShipperSeeBuyerContact(pkg, session.email)
+        : false;
+      const buyer = order.buyerName || (allowContact ? (order.buyerEmail || '') : 'Khách hàng');
+      const addr = window.CCLPrivacy
+        ? CCLPrivacy.revealAddress(order.buyerAddress, allowContact)
+        : (order.buyerAddress || '—');
+      const phone = window.CCLPrivacy
+        ? CCLPrivacy.revealPhone(order.buyerPhone, allowContact)
+        : (order.buyerPhone || '');
+      const contactHint = allowContact ? '' : '<div class="contact-hint">SĐT/địa chỉ mở sau khi bạn nhận kiện</div>';
+      let actions = '';
+
+      if (mode === 'available') {
+        actions = `<button class="btn btn-primary btn-sm" onclick="claim('${order.id}','${pkg.packageId}')">Nhận vận chuyển</button>`;
+      } else if (mode === 'mine') {
+        const st = pkg.status;
+        if (st === 'picked_up') {
+          actions = `
+            <button class="btn btn-primary btn-sm" onclick="adv('${order.id}','${pkg.packageId}','in_transit','Đang luân chuyển')">Bắt đầu vận chuyển</button>
+            <button class="btn btn-outline btn-sm" onclick="adv('${order.id}','${pkg.packageId}','out_for_delivery','Xuất phát giao hàng')">Giao ngay</button>
+            <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="adv('${order.id}','${pkg.packageId}','delivery_failed','Không liên lạc được / khách từ chối')">Giao thất bại</button>`;
+        } else if (st === 'in_transit') {
+          actions = `
+            <button class="btn btn-primary btn-sm" onclick="adv('${order.id}','${pkg.packageId}','out_for_delivery','Đang giao đến tay khách')">Đang giao (Out for delivery)</button>
+            <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="adv('${order.id}','${pkg.packageId}','delivery_failed','Giao thất bại')">Giao thất bại</button>`;
+        } else if (st === 'out_for_delivery') {
+          actions = `
+            <button class="btn btn-primary btn-sm" onclick="openDeliverModal('${order.id}','${pkg.packageId}')">Giao thành công (có ảnh)</button>
+            <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="adv('${order.id}','${pkg.packageId}','delivery_failed','Khách không nhận')">Khách không nhận</button>`;
+        } else if (st === 'delivery_failed') {
+          actions = `
+            <button class="btn btn-primary btn-sm" onclick="adv('${order.id}','${pkg.packageId}','returning','Hoàn hàng về shop')">Hoàn về shop</button>
+            <button class="btn btn-outline btn-sm" onclick="adv('${order.id}','${pkg.packageId}','out_for_delivery','Giao lại')">Thử giao lại</button>`;
+        } else if (st === 'returning') {
+          actions = `<button class="btn btn-primary btn-sm" onclick="adv('${order.id}','${pkg.packageId}','returned_to_seller','Đã trả hàng về shop')">Xác nhận đã trả shop</button>`;
+        }
+      }
+
+      return `
+        <div class="pkg-card ${mode === 'mine' ? 'mine' : ''}">
+          <div class="pkg-head">
+            <div>
+              <strong>${order.id}</strong>
+              <span style="color:var(--text-muted);font-size:0.85rem"> · ${pkg.packageId}</span>
+            </div>
+            ${statusPill(pkg.status)}
+          </div>
+          <div class="pkg-meta">
+            <div>🏪 <strong>${pkg.shopName || pkg.shopId}</strong> ${pkg.trackingNumber ? '· Mã VĐ: <code>' + pkg.trackingNumber + '</code>' : ''}</div>
+            <div>👤 ${buyer} ${phone ? '· 📞 <span class="' + (allowContact ? '' : 'contact-masked') + '">' + phone + '</span>' : ''}</div>
+            <div class="addr-box">📍 Giao tới: <span class="${allowContact ? '' : 'contact-masked'}">${addr}</span>${contactHint}</div>
+          </div>
+          <ul class="pkg-items">${items}</ul>
+          ${pkg.shipFee ? `<div style="font-size:0.85rem;color:var(--text-secondary)">Phí ship kiện: ${formatVND(pkg.shipFee)}</div>` : ''}
+          ${pkg.proofImages && pkg.proofImages.length ? `
+            <div style="margin-top:8px">
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Ảnh chứng từ giao hàng</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${pkg.proofImages.map((src) => `<img src="${src}" alt="proof" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">`).join('')}
+              </div>
+            </div>` : ''}
+          <div class="pkg-actions">${actions}
+            <button type="button" class="btn btn-ghost btn-sm" onclick="location.href='/chat-room.html?order=${order.id}&pkg=${pkg.packageId}'">Phòng chat</button></div>
+          <details style="margin-top:10px">
+            <summary style="cursor:pointer;font-size:0.85rem;color:var(--text-secondary)">Xem tiến trình</summary>
+            ${renderTimeline(pkg)}
+          </details>
+        </div>`;
+    }
+
+    function renderList() {
+      const el = document.getElementById('listArea');
+      let html = '';
+      if (currentTab === 'available') {
+        const list = CCLStore.getPackagesReadyForPickup();
+        if (!list.length) html = '<div class="panel"><p style="color:var(--text-muted)">Không có kiện nào đang chờ lấy hàng.</p></div>';
+        else html = list.map(({ order, package: pkg }) => pkgCard(order, pkg, 'available')).join('');
+      } else if (currentTab === 'mine') {
+        const list = CCLStore.getPackagesForShipper(session.email);
+        if (!list.length) html = '<div class="panel"><p style="color:var(--text-muted)">Bạn chưa nhận kiện nào đang giao.</p></div>';
+        else html = list.map(({ order, package: pkg }) => pkgCard(order, pkg, 'mine')).join('');
+      } else {
+        const list = CCLStore.getShipperHistory(session.email);
+        if (!list.length) html = '<div class="panel"><p style="color:var(--text-muted)">Chưa có lịch sử.</p></div>';
+        else html = list.map(({ order, package: pkg }) => pkgCard(order, pkg, 'history')).join('');
+      }
+      el.innerHTML = html;
+      renderStats();
+    }
+
+    function claim(orderId, packageId) {
+      const u = CCLStore.findUserByEmail(session.email) || session;
+      const res = CCLStore.shipperClaimPackage(orderId, packageId, {
+        id: u.id || session.id,
+        email: session.email,
+        name: u.name || session.name,
+        shopName: u.shopName,
+        phone: u.phone || session.phone || '',
+      });
+      if (res.error) toast(res.error, 'error');
+      else {
+        toast('Đã nhận kiện — hãy đến lấy hàng tại shop', 'success');
+        currentTab = 'mine';
+        document.querySelectorAll('.tab-bar .chip').forEach((c) => {
+          c.classList.toggle('active', c.dataset.tab === 'mine');
+        });
+        renderList();
+      }
+    }
+
+    function adv(orderId, packageId, status, note, proofImages) {
+      const u = CCLStore.findUserByEmail(session.email) || session;
+      const res = CCLStore.shipperUpdateStatus(orderId, packageId, status, {
+        email: session.email,
+        name: u.name || session.name,
+      }, { note, proofImages });
+      if (res.error) toast(res.error, 'error');
+      else {
+        toast(note || 'Đã cập nhật', 'success');
+        renderList();
+      }
+    }
+
+    /* ---- Delivery proof modal ---- */
+    let deliverCtx = null;
+    let pendingProofs = [];
+
+    function openDeliverModal(orderId, packageId) {
+      deliverCtx = { orderId, packageId };
+      pendingProofs = [];
+      document.getElementById('proofPreview').innerHTML = '';
+      document.getElementById('deliverModal').style.display = 'flex';
+    }
+    function closeDeliverModal() {
+      document.getElementById('deliverModal').style.display = 'none';
+      deliverCtx = null;
+      pendingProofs = [];
+    }
+    function onProofFiles(input) {
+      const files = [...(input.files || [])].slice(0, 4);
+      files.forEach((file) => {
+        if (!file.type.startsWith('image/')) return;
+        if (pendingProofs.length >= 4) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          // compress roughly via canvas
+          const img = new Image();
+          img.onload = () => {
+            const max = 1000;
+            let w = img.width, h = img.height;
+            if (w > max || h > max) {
+              const r = Math.min(max / w, max / h);
+              w = Math.round(w * r); h = Math.round(h * r);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const data = canvas.toDataURL('image/jpeg', 0.72);
+            pendingProofs.push(data);
+            renderProofPreview();
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+      input.value = '';
+    }
+    function renderProofPreview() {
+      document.getElementById('proofPreview').innerHTML = pendingProofs.map((src, i) =>
+        `<div style="position:relative">
+          <img src="${src}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+          <button type="button" onclick="pendingProofs.splice(${i},1);renderProofPreview()"
+            style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:12px;cursor:pointer">×</button>
+        </div>`
+      ).join('');
+    }
+    function confirmDeliver() {
+      if (!deliverCtx) return;
+      const platform = CCLConfig.loadPlatformConfig();
+      if (platform.requireDeliveryPhoto !== false && !pendingProofs.length) {
+        toast('Cần ít nhất 1 ảnh chứng từ giao hàng', 'error');
+        return;
+      }
+      adv(deliverCtx.orderId, deliverCtx.packageId, 'delivered', 'Khách đã nhận hàng (có ảnh chứng từ)', pendingProofs.slice());
+      closeDeliverModal();
+    }
+  </script>
+
+  <!-- Modal ảnh giao hàng -->
+  <div id="deliverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:16px">
+    <div class="panel" style="max-width:420px;width:100%;margin:0">
+      <h2 class="panel-title" style="margin-bottom:8px">Xác nhận giao thành công</h2>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">
+        Chụp hoặc tải ảnh kiện hàng tại địa điểm giao (tối đa 4 ảnh). Ảnh giúp bảo vệ bạn khi có khiếu nại.
+      </p>
+      <div id="proofPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:40px"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('proofFile').click()">Chọn ảnh</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('proofCam').click()">Chụp ảnh</button>
+        <input type="file" id="proofFile" accept="image/*" multiple hidden onchange="onProofFiles(this)">
+        <input type="file" id="proofCam" accept="image/*" capture="environment" hidden onchange="onProofFiles(this)">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-ghost" onclick="closeDeliverModal()">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="confirmDeliver()">Xác nhận đã giao</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

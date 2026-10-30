@@ -27,6 +27,19 @@
     <div class="dash-body">
       <div class="container">
         
+        <div class="ws-banner" id="wsBanner">
+          <button type="button" class="btn btn-outline btn-sm ws-banner-edit" onclick="editWsBanner()">Đổi ảnh bìa admin</button>
+        </div>
+        <nav class="ws-menu">
+          <span class="ws-group-label">Vận hành</span>
+          <a class="ws-item" href="#shopFeeBody">Phí gian hàng</a>
+          <a class="ws-item" href="#returnsBody">Hoàn hàng</a>
+          <a class="ws-item" href="#adminProductsBody">Sản phẩm</a>
+          <span class="ws-group-label">Hệ thống</span>
+          <a class="ws-item" href="#cfg_feeModel">Cấu hình</a>
+          <a class="ws-item" href="#blocksBody">Chặn tài khoản</a>
+          <a class="ws-item" href="/">Về chợ</a>
+        </nav>
         <div class="panel">
           <h2 class="panel-title">Ảnh banner trang chủ</h2>
           <div class="hero-admin-row">
@@ -76,15 +89,51 @@
         </div>
 
         <div class="panel">
-          <h2 class="panel-title">Cấu hình</h2>
+          <h2 class="panel-title">Cấu hình phí & vận hành</h2>
           <div class="form-row">
-            <div class="form-field"><label>Phí sàn (%)</label><input type="number" id="cfg_fee" min="0" max="30" step="0.1"></div>
+            <div class="form-field"><label>Mô hình phí mặc định</label>
+              <select id="cfg_feeModel">
+                <option value="monthly">Phí tháng cố định</option>
+                <option value="commission">Hoa hồng % doanh thu</option>
+                <option value="hybrid">Kết hợp (tháng + %)</option>
+              </select>
+            </div>
+            <div class="form-field"><label>Phí tháng mặc định (đ)</label><input type="text" id="cfg_monthly" inputmode="numeric" placeholder="200000" autocomplete="off"></div>
+            <div class="form-field"><label>Hoa hồng sàn (%)</label><input type="number" id="cfg_fee" min="0" max="30" step="0.1"></div>
             <div class="form-field"><label>Thuế DN (%)</label><input type="number" id="cfg_tax" min="0" max="50" step="0.5"></div>
             <div class="form-field"><label>Ship mặc định (đ)</label><input type="text" id="cfg_ship" inputmode="numeric" placeholder="0" autocomplete="off"></div>
             <div class="form-field"><label>Ngày giữ escrow</label><input type="number" id="cfg_escrow" min="0" max="30"></div>
             <div class="form-field"><label>Ngày cửa sổ hoàn</label><input type="number" id="cfg_return" min="0" max="30"></div>
           </div>
-          <button class="btn btn-primary" onclick="saveCfg()">Lưu</button>
+          <label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-size:0.9rem;cursor:pointer">
+            <input type="checkbox" id="cfg_selfShip"> Cho phép shop tự ship ngoài sàn
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:0.9rem;cursor:pointer">
+            <input type="checkbox" id="cfg_requirePhoto"> Bắt buộc ảnh chứng từ khi giao hàng
+          </label>
+          <button class="btn btn-primary" onclick="saveCfg()">Lưu cấu hình</button>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Phí theo gian hàng</h2>
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">
+            Chọn mô hình phí riêng từng shop. Giai đoạn đầu nên dùng <strong>phí tháng</strong> mức hợp lý để shop dễ vào sàn.
+          </p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Shop</th>
+                  <th>Mô hình</th>
+                  <th>Phí tháng</th>
+                  <th>HH %</th>
+                  <th>Đóng đến</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="shopFeeBody"></tbody>
+            </table>
+          </div>
         </div>
 
         <div class="panel">
@@ -173,26 +222,41 @@
   <script src="js/i18n.js"></script>
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/privacy.js"></script>
   <script src="js/app.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const s = requireAuth(['admin']);
       if (!s) return;
       document.getElementById('adminName').textContent = s.name || s.email;
+      window.__adminSession = s;
+      setTimeout(function(){ if (typeof applyWsBanner==='function') applyWsBanner(); }, 0);
       const c = CCLConfig.loadPlatformConfig();
       document.getElementById('cfg_fee').value = c.platformFeeRate * 100;
       document.getElementById('cfg_tax').value = c.corporateTaxRate * 100;
+      const feeModelEl = document.getElementById('cfg_feeModel');
+      if (feeModelEl) feeModelEl.value = c.defaultFeeModel || 'monthly';
+      const monthlyEl = document.getElementById('cfg_monthly');
+      if (monthlyEl) {
+        monthlyEl.value = formatPriceTyping(String(c.defaultMonthlyFee || 200000));
+        bindPriceInput(monthlyEl);
+      }
       const shipEl = document.getElementById('cfg_ship');
       shipEl.value = formatPriceTyping(String(c.defaultShipFeePerShop || 0));
       bindPriceInput(shipEl);
       document.getElementById('cfg_escrow').value = c.escrowHoldDays;
       document.getElementById('cfg_return').value = c.returnWindowDays || 3;
+      const selfShipEl = document.getElementById('cfg_selfShip');
+      if (selfShipEl) selfShipEl.checked = c.allowShopSelfShip !== false;
+      const reqPhotoEl = document.getElementById('cfg_requirePhoto');
+      if (reqPhotoEl) reqPhotoEl.checked = c.requireDeliveryPhoto !== false;
       refreshStats();
       loadHeroForm();
       renderReturns();
       renderBlocks();
       renderUsers();
       renderAdminProducts();
+      renderShopFees();
     });
 
 
@@ -319,16 +383,117 @@
       document.getElementById('netProfit').textContent = formatVND(rev - tax);
     }
 
+    function applyWsBanner() {
+      if (!window.CCLPrivacy || !window.__adminSession) return;
+      const ui = CCLPrivacy.loadWorkspaceUI('admin', window.__adminSession.email || 'admin');
+      const el = document.getElementById('wsBanner');
+      if (el && ui.banner) {
+        el.style.backgroundImage = 'url(' + ui.banner + ')';
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      }
+    }
+    function editWsBanner() {
+      const s = window.__adminSession || (typeof getSession==='function' ? getSession() : null);
+      if (!s) return;
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            const maxW = 1200;
+            let w = img.width, h = img.height;
+            if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            CCLPrivacy.saveWorkspaceUI('admin', s.email || 'admin', { banner: c.toDataURL('image/jpeg', 0.75) });
+            applyWsBanner();
+            toast('Đã cập nhật ảnh bìa', 'success');
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    }
+
     function saveCfg() {
       CCLConfig.savePlatformConfig({
+        defaultFeeModel: document.getElementById('cfg_feeModel')?.value || 'monthly',
+        defaultMonthlyFee: parseVNDInput(document.getElementById('cfg_monthly')?.value),
         platformFeeRate: Number(document.getElementById('cfg_fee').value) / 100,
         corporateTaxRate: Number(document.getElementById('cfg_tax').value) / 100,
         defaultShipFeePerShop: parseVNDInput(document.getElementById('cfg_ship').value),
         escrowHoldDays: document.getElementById('cfg_escrow').value,
         returnWindowDays: document.getElementById('cfg_return').value,
+        allowShopSelfShip: !!document.getElementById('cfg_selfShip')?.checked,
+        requireDeliveryPhoto: !!document.getElementById('cfg_requirePhoto')?.checked,
       }, getSession()?.name || 'admin');
-      toast('Đã lưu', 'success');
+      toast('Đã lưu cấu hình', 'success');
       refreshStats();
+      renderShopFees();
+    }
+
+    function renderShopFees() {
+      const body = document.getElementById('shopFeeBody');
+      if (!body) return;
+      const all = CCLConfig.loadAllShopSettings();
+      const platform = CCLConfig.loadPlatformConfig();
+      const rows = Object.keys(all).map((sid) => {
+        const s = CCLConfig.loadShopSettings(sid);
+        const model = s.feeModel || platform.defaultFeeModel || 'monthly';
+        const paid = s.monthlyFeePaidUntil
+          ? new Date(s.monthlyFeePaidUntil).toLocaleDateString('vi-VN')
+          : '—';
+        const ratePct = ((s.commissionRate != null ? s.commissionRate : platform.platformFeeRate) * 100).toFixed(2);
+        return '<tr>' +
+          '<td><strong>' + (s.shopName || sid) + '</strong><br><span style="font-size:0.75rem;color:var(--text-muted)">' + sid + '</span></td>' +
+          '<td><select id="fm_' + sid + '" style="min-width:120px">' +
+            ['monthly','commission','hybrid'].map((m) =>
+              '<option value="' + m + '"' + (model === m ? ' selected' : '') + '>' +
+              ({ monthly: 'Phí tháng', commission: 'Hoa hồng %', hybrid: 'Kết hợp' }[m]) +
+              '</option>'
+            ).join('') +
+          '</select></td>' +
+          '<td><input type="text" id="mf_' + sid + '" value="' + formatPriceTyping(String(s.monthlyFee || platform.defaultMonthlyFee || 0)) + '" style="width:100px" inputmode="numeric"></td>' +
+          '<td><input type="number" id="cr_' + sid + '" value="' + ratePct + '" min="0" max="30" step="0.1" style="width:70px"></td>' +
+          '<td style="font-size:0.85rem">' + paid + '</td>' +
+          '<td style="white-space:nowrap">' +
+            '<button class="btn btn-primary btn-sm" onclick="saveShopFee(\\'' + sid + '\\')">Lưu</button> ' +
+            '<button class="btn btn-outline btn-sm" onclick="markMonthlyPaid(\\'' + sid + '\\')">+1 tháng</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+      body.innerHTML = rows || '<tr><td colspan="6" style="color:var(--text-muted)">Chưa có gian hàng</td></tr>';
+      Object.keys(all).forEach((sid) => {
+        const el = document.getElementById('mf_' + sid);
+        if (el) bindPriceInput(el);
+      });
+    }
+
+    function saveShopFee(shopId) {
+      const model = document.getElementById('fm_' + shopId)?.value || 'monthly';
+      const monthlyFee = parseVNDInput(document.getElementById('mf_' + shopId)?.value);
+      const commissionRate = Number(document.getElementById('cr_' + shopId)?.value) / 100;
+      CCLConfig.saveShopSettings(shopId, { feeModel: model, monthlyFee, commissionRate });
+      toast('Đã lưu phí shop ' + shopId, 'success');
+      renderShopFees();
+    }
+
+    function markMonthlyPaid(shopId) {
+      const s = CCLConfig.loadShopSettings(shopId);
+      let base = s.monthlyFeePaidUntil && new Date(s.monthlyFeePaidUntil) > new Date()
+        ? new Date(s.monthlyFeePaidUntil)
+        : new Date();
+      base.setMonth(base.getMonth() + 1);
+      CCLConfig.saveShopSettings(shopId, { monthlyFeePaidUntil: base.toISOString() });
+      toast('Đã ghi nhận đóng phí +1 tháng', 'success');
+      renderShopFees();
     }
 
     function renderAdminProducts() {

@@ -96,9 +96,24 @@
       document.getElementById('role').value = roleLabel[u.role || s.role] || (u.role || s.role);
       document.getElementById('phone').value = u.phone || s.phone || '';
       document.getElementById('address').value = u.address || '';
-      if ((u.role || s.role) === 'seller') {
+      if ((u.role || s.role) === 'seller' || (u.role || s.role) === 'shipper') {
         document.getElementById('shopNameGroup').style.display = 'block';
         document.getElementById('shopName').value = u.shopName || s.shopName || '';
+        const label = document.querySelector('#shopNameGroup label');
+        if (label && (u.role || s.role) === 'shipper') label.textContent = 'Tên đơn vị vận chuyển';
+      }
+      // Quick link for shipper
+      if ((u.role || s.role) === 'shipper') {
+        const main = document.querySelector('main.container') || document.querySelector('main');
+        if (main && !document.getElementById('shipperDashLink')) {
+          const a = document.createElement('a');
+          a.id = 'shipperDashLink';
+          a.href = '/shipper.html';
+          a.className = 'btn btn-primary';
+          a.style.marginTop = '12px';
+          a.textContent = 'Mở bảng điều khiển vận chuyển';
+          main.appendChild(a);
+        }
       }
     });
 

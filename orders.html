@@ -6,6 +6,17 @@
   <title>Đơn hàng — chochatluongonline</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .order-card { margin-bottom:18px; }
+    .pkg-block { border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:12px; background:var(--bg); }
+    .pkg-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+    .timeline { border-left:2px solid var(--border); margin:10px 0 0 6px; padding-left:14px; }
+    .timeline-item { position:relative; padding-bottom:10px; font-size:0.85rem; }
+    .timeline-item::before { content:''; position:absolute; left:-19px; top:4px; width:9px; height:9px; border-radius:50%; background:var(--primary); border:2px solid var(--surface); }
+    .timeline-item .t-time { color:var(--text-muted); font-size:0.78rem; }
+    .track-row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:0.9rem; margin:6px 0; }
+    .track-row code { background:var(--surface); padding:2px 8px; border-radius:6px; font-size:0.85rem; }
+  </style>
 </head>
 <body>
   <header class="header">
@@ -19,52 +30,177 @@
   </header>
 
   <main class="container" style="padding:28px 20px 48px">
+    <nav class="ws-menu">
+      <span class="ws-group-label">Không gian người mua</span>
+      <a class="ws-item" href="/">🏠 Trang chợ</a>
+      <a class="ws-item active" href="/orders.html">📋 Đơn hàng</a>
+      <a class="ws-item" href="/#cart">🛍️ Giỏ hàng</a>
+      <a class="ws-item" href="/profile.html">👤 Hồ sơ</a>
+    </nav>
     <h1 style="font-size:1.3rem;margin-bottom:20px">Đơn hàng của bạn</h1>
+    <p style="font-size:0.85rem;color:var(--text-secondary);margin:-8px 0 16px">
+      Liên hệ shop/shipper chỉ mở dần theo tiến độ đơn để tránh giao dịch ngoài sàn.
+    </p>
     <div id="orderList"></div>
   </main>
 
   <script src="js/i18n.js"></script>
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/privacy.js"></script>
+  <script src="js/chat-ui.js"></script>
   <script src="js/app.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const s = requireAuth(['buyer', 'admin']);
       if (!s) return;
       renderUserNav();
-      const orders = CCLStore.getOrders().filter((o) => o.buyerEmail === s.email || s.role === 'admin');
+      renderOrders(s);
+    });
+
+    function statusPill(st) {
+      const label = (CCLStore.STATUS_LABEL && CCLStore.STATUS_LABEL[st]) || st;
+      const map = {
+        pending_confirm: 'status-held',
+        preparing: 'status-pending',
+        ready_for_pickup: 'status-pending',
+        picked_up: 'status-pending',
+        in_transit: 'status-pending',
+        out_for_delivery: 'status-pending',
+        delivered: 'status-released',
+        delivery_failed: 'status-held',
+        returning: 'status-held',
+        returned_to_seller: 'status-done',
+        cancel_requested: 'status-pending',
+        cancelled: 'status-done',
+        held: 'status-held',
+        shipping: 'status-pending',
+        released: 'status-released',
+        return_requested: 'status-pending',
+        returned: 'status-done',
+      };
+      return '<span class="status-pill ' + (map[st] || 'status-pending') + '">' + label + '</span>';
+    }
+
+    function renderTimeline(pkg) {
+      const tl = (pkg.timeline || []).slice().reverse();
+      if (!tl.length) return '<p style="font-size:0.85rem;color:var(--text-muted)">Chưa có sự kiện</p>';
+      return '<div class="timeline">' + tl.map((e) =>
+        '<div class="timeline-item"><div class="t-time">' +
+        new Date(e.at).toLocaleString('vi-VN') + ' · ' + (e.byName || e.byRole || '') +
+        '</div><div>' + (e.note || e.event) + '</div></div>'
+      ).join('') + '</div>';
+    }
+
+    function renderOrders(s) {
+      const orders = s.role === 'admin'
+        ? CCLStore.getOrders()
+        : CCLStore.getOrdersForBuyer(s.email);
       const el = document.getElementById('orderList');
       if (!orders.length) {
         el.innerHTML = '<div class="panel"><p style="color:var(--text-muted)">Chưa có đơn hàng</p></div>';
         return;
       }
-      const statusMap = {
-        held: '<span class="status-pill status-held">Tạm giữ</span>',
-        shipping: '<span class="status-pill status-pending">Đang giao</span>',
-        released: '<span class="status-pill status-released">Đã giải ngân</span>',
-        return_requested: '<span class="status-pill status-pending">Yêu cầu hoàn</span>',
-        returned: '<span class="status-pill status-done">Đã hoàn</span>',
-      };
-      el.innerHTML = orders.map((o) => `
-        <div class="panel">
-          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <strong>${o.id}</strong>
-            ${statusMap[o.status] || o.status}
-          </div>
-          <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">
-            ${new Date(o.createdAt).toLocaleString('vi-VN')} · ${o.bank || ''}
-          </div>
-          <ul style="font-size:0.9rem;margin-bottom:12px">
-            ${(o.cart || []).map((i) => `<li>${i.name} × ${i.qty || 1} — ${formatVND(i.price * (i.qty || 1))}</li>`).join('')}
-          </ul>
-          <div style="font-weight:700;margin-bottom:12px">Tổng: ${formatVND(o.totals?.grandTotal || 0)}</div>
-          ${o.status === 'held' || o.status === 'shipping' ? `
-            <button class="btn btn-outline btn-sm" onclick="askReturn('${o.id}')">Yêu cầu hoàn hàng</button>
-          ` : ''}
-          ${o.returnReason ? `<p style="margin-top:8px;font-size:0.85rem;color:var(--warning)">Lý do hoàn: ${o.returnReason}</p>` : ''}
-        </div>
-      `).join('');
-    });
+
+      el.innerHTML = orders.map((o) => {
+        const packages = o.packages && o.packages.length
+          ? o.packages
+          : [{
+              packageId: 'legacy',
+              shopName: (o.cart && o.cart[0] && o.cart[0].shopName) || 'Shop',
+              status: o.status,
+              items: o.cart || [],
+              timeline: [],
+              trackingNumber: null,
+              carrierName: null,
+              shipperName: null,
+              shipperPhone: null,
+            }];
+
+        const pkgHtml = packages.map((pkg) => {
+          const items = (pkg.items || []).map((i) =>
+            '<li>' + i.name + ' × ' + (i.qty || 1) + ' — ' + formatVND((i.price || 0) * (i.qty || 1)) + '</li>'
+          ).join('');
+          return '<div class="pkg-block">' +
+            '<div class="pkg-head"><strong>🏪 ' + (pkg.shopName || pkg.shopId || 'Shop') + '</strong>' + statusPill(pkg.status) + '</div>' +
+            '<div class="track-row">' +
+              (pkg.trackingNumber
+                ? '<span>Mã VĐ: <code id="tn-' + pkg.packageId + '">' + pkg.trackingNumber + '</code> ' +
+                  '<button class="btn btn-ghost btn-sm" onclick="copyTn(\\'' + pkg.packageId + '\\')">Copy</button></span>'
+                : '') +
+              (pkg.carrierName ? ' <span>Đơn vị: ' + pkg.carrierName + '</span>' : '') +
+            '</div>' +
+            (pkg.shipperName
+              ? '<div class="track-row">Shipper: ' + pkg.shipperName +
+                (pkg.shipperPhone ? ' · 📞 ' + pkg.shipperPhone : '') +
+                (pkg.carrier === 'self' ? ' (Shop tự giao)' : '') + '</div>'
+              : '') +
+            '<ul style="font-size:0.9rem;margin:8px 0 8px 18px">' + items + '</ul>' +
+            (pkg.proofImages && pkg.proofImages.length
+              ? '<div style="margin:8px 0"><div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Ảnh chứng từ giao hàng</div>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+                pkg.proofImages.map(function(src) {
+                  return '<img src="' + src + '" alt="proof" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">';
+                }).join('') + '</div></div>'
+              : '') +
+            '<details open><summary style="cursor:pointer;font-size:0.85rem;color:var(--text-secondary)">Tiến trình vận đơn</summary>' +
+            renderTimeline(pkg) + '</details></div>';
+        }).join('');
+
+        const canCancel = CCLStore.canBuyerCancelDirect(o) ||
+          ['pending_confirm','preparing','ready_for_pickup','held','in_transit','picked_up','out_for_delivery','shipping'].includes(o.status);
+
+        return '<div class="panel order-card">' +
+          '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">' +
+            '<strong>' + o.id + '</strong>' + statusPill(o.status) +
+          '</div>' +
+          '<div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">' +
+            new Date(o.createdAt).toLocaleString('vi-VN') + ' · ' + (o.bank || '') +
+            (o.paymentStatus ? ' · Thanh toán: ' + o.paymentStatus : '') +
+          '</div>' +
+          pkgHtml +
+          '<div style="font-weight:700;margin:14px 0 10px">Tổng: ' + formatVND(o.totals && o.totals.grandTotal || 0) + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+            (canCancel && o.status !== 'cancelled' && o.status !== 'delivered'
+              ? '<button class="btn btn-outline btn-sm" onclick="doCancel(\\'' + o.id + '\\')">Hủy / Yêu cầu hủy</button>'
+              : '') +
+            (o.cancelRequest && o.cancelRequest.status === 'pending'
+              ? '<span class="status-pill status-pending">Đang có yêu cầu hủy chờ xử lý</span>'
+              : '') +
+            (o.status === 'held' || o.status === 'shipping' || o.paymentStatus === 'escrow_held'
+              ? '<button class="btn btn-ghost btn-sm" onclick="askReturn(\\'' + o.id + '\\')">Yêu cầu hoàn (escrow)</button>'
+              : '') +
+            '<button class="btn btn-primary btn-sm" onclick="openOrderChat(\'' + o.id + '\')">Chat đơn</button>' +
+          '</div>' +
+          (o.returnReason ? '<p style="margin-top:8px;font-size:0.85rem;color:var(--warning)">Lý do hoàn: ' + o.returnReason + '</p>' : '') +
+          (o.cancelRequest ? '<p style="margin-top:6px;font-size:0.85rem;color:var(--text-secondary)">Hủy: ' + (o.cancelRequest.reason || '') + ' (' + o.cancelRequest.status + ')</p>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    function copyTn(pkgId) {
+      const el = document.getElementById('tn-' + pkgId);
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent).then(() => toast('Đã copy mã vận đơn', 'success'));
+    }
+
+    function doCancel(orderId) {
+      const reason = prompt('Lý do hủy đơn:');
+      if (reason === null) return;
+      const s = getSession();
+      const res = CCLStore.requestCancel(orderId, s.email, 'buyer', reason || 'Buyer hủy');
+      if (res.error) toast(res.error, 'error');
+      else {
+        toast(res.mode === 'direct' ? 'Đã hủy đơn thành công' : 'Đã gửi yêu cầu hủy — chờ xử lý', 'success');
+        location.reload();
+      }
+    }
+
+    function openOrderChat(orderId) {
+      const order = CCLStore.findOrder(orderId);
+      const pkgId = order && order.packages && order.packages[0] ? order.packages[0].packageId : '';
+      location.href = '/chat-room.html?order=' + encodeURIComponent(orderId) + (pkgId ? '&pkg=' + encodeURIComponent(pkgId) : '');
+    }
 
     function askReturn(orderId) {
       const reason = prompt('Lý do hoàn hàng:');
