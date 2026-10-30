@@ -157,6 +157,7 @@ function renderUserNav() {
     let items = '';
     if (s.role === 'admin') items += '<a href="/admin.html">' + tt('admin', 'Quản trị') + '</a>';
     if (s.role === 'seller') items += '<a href="/seller.html">' + tt('seller', 'Gian hàng') + '</a>';
+    if (s.role === 'shipper') items += '<a href="/shipper.html">Vận chuyển</a>';
     if (s.role === 'buyer' || s.role === 'admin') items += '<a href="/orders.html">' + tt('orders', 'Đơn hàng') + '</a>';
     items += '<a href="/profile.html">' + tt('profile', 'Hồ sơ') + '</a>';
     items += '<button type="button" onclick="logout()">' + tt('logout', 'Thoát') + '</button>';
@@ -165,6 +166,7 @@ function renderUserNav() {
     let desk = '';
     if (s.role === 'admin') desk += '<a href="/admin.html" class="btn btn-ghost btn-sm">' + tt('admin', 'Quản trị') + '</a>';
     if (s.role === 'seller') desk += '<a href="/seller.html" class="btn btn-ghost btn-sm">' + tt('seller', 'Gian hàng') + '</a>';
+    if (s.role === 'shipper') desk += '<a href="/shipper.html" class="btn btn-ghost btn-sm">Vận chuyển</a>';
     if (s.role === 'buyer' || s.role === 'admin') desk += '<a href="/orders.html" class="btn btn-ghost btn-sm">' + tt('orders', 'Đơn hàng') + '</a>';
     desk += '<a href="/profile.html" class="btn btn-ghost btn-sm">' + tt('profile', 'Hồ sơ') + '</a>';
     desk += '<button class="btn btn-outline btn-sm" onclick="logout()">' + tt('logout', 'Thoát') + '</button>';
@@ -360,18 +362,19 @@ async function checkoutOrder() {
     return;
   }
   const bank = $('#bankSelect')?.value || 'Vietcombank';
-  const order = {
-    id: 'ORD-' + Date.now().toString(36).toUpperCase(),
+  const user = CCLStore.findUserByEmail(s.email) || {};
+  const order = CCLStore.createOrder({
     buyerEmail: s.email,
-    buyerName: s.name,
-    cart, totals, bank,
-    status: 'held',
-    createdAt: new Date().toISOString(),
-  };
-  CCLStore.saveOrder(order);
+    buyerName: s.name || user.name || '',
+    buyerPhone: s.phone || user.phone || '',
+    buyerAddress: user.address || '',
+    cart,
+    totals,
+    bank,
+  });
   saveCart([]);
   renderCart();
-  toast('Đặt hàng thành công — tiền đang tạm giữ', 'success');
+  toast('Đặt hàng thành công — tiền đang tạm giữ escrow. Mã: ' + order.id, 'success');
 }
 
 
@@ -390,20 +393,71 @@ function applyHero() {
   if (desc && c.heroTagline) desc.textContent = c.heroTagline;
 }
 
+function renderShops() {
+  const el = document.getElementById('shopsGrid');
+  if (!el || !window.CCLStore) return;
+  const products = CCLStore.getProducts().filter((p) => p.active !== false);
+  const map = {};
+  products.forEach((p) => {
+    const id = p.shopId || 'unknown';
+    if (!map[id]) {
+      map[id] = {
+        shopId: id,
+        shopName: p.shopName || id,
+        count: 0,
+        sold: 0,
+        ratingSum: 0,
+        ratingN: 0,
+        emoji: p.emoji || '🏪',
+      };
+    }
+    map[id].count += 1;
+    map[id].sold += Number(p.sold) || 0;
+    if (p.rating) {
+      map[id].ratingSum += Number(p.rating) || 0;
+      map[id].ratingN += 1;
+    }
+  });
+  const shops = Object.values(map).sort((a, b) => b.sold - a.sold);
+  if (!shops.length) {
+    el.innerHTML = '<p class="empty-msg">Chưa có gian hàng</p>';
+    return;
+  }
+  el.innerHTML = shops.map((s) => {
+    const rating = s.ratingN ? (s.ratingSum / s.ratingN).toFixed(1) : '—';
+    return (
+      '<a class="shop-tile" href="/shop.html?id=' + encodeURIComponent(s.shopId) + '">' +
+        '<div class="shop-tile-icon">' + (s.emoji || '🏪') + '</div>' +
+        '<div class="shop-tile-body">' +
+          '<div class="shop-tile-name">' + s.shopName + '</div>' +
+          '<div class="shop-tile-meta">' + s.count + ' SP/DV · ★ ' + rating + ' · Đã bán ' + s.sold + '</div>' +
+        '</div>' +
+      '</a>'
+    );
+  }).join('');
+}
+
 function initHome() {
   CCLStore.ensureProducts();
   applyHero();
   renderUserNav();
   if (typeof applyI18n === 'function') applyI18n();
   renderCatalog();
+  renderShops();
   renderCart();
   updateCartBadge();
+  // Ẩn link đăng nhập trên quicknav nếu đã login
+  const s = getSession();
+  document.querySelectorAll('.qnav-muted').forEach((a) => {
+    if (s) a.style.display = 'none';
+  });
   const search = $('#searchInput');
-  if (search) search.addEventListener('input', () => renderCatalog());
+  if (search) search.addEventListener('input', () => { renderCatalog(); renderShops(); });
   const searchM = $('#searchInputMobile');
   if (searchM) searchM.addEventListener('input', () => {
     if (search) search.value = searchM.value;
     renderCatalog();
+    renderShops();
   });
   ['filterMinPrice','filterMaxPrice'].forEach((id) => {
     const el = document.getElementById(id);
