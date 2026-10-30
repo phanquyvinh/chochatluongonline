@@ -191,8 +191,10 @@ function renderUserNav() {
       document.addEventListener('click', () => dd.classList.remove('open'), { once: true });
     }
   } else {
-    // Nút ĐN/ĐK chỉ trên banner — header để trống khi chưa login
-    el.innerHTML = '';
+    // Một chỗ duy nhất: Đăng nhập / Đăng ký trên header
+    el.innerHTML =
+      '<a href="/login.html" class="btn btn-ghost btn-sm">' + tt('login', 'Đăng nhập') + '</a>' +
+      '<a href="/register.html" class="btn btn-primary btn-sm">' + tt('register', 'Đăng ký') + '</a>';
   }
   const sel = document.getElementById('langSelect');
   if (sel && typeof getLang === 'function') sel.value = getLang();
@@ -229,9 +231,7 @@ function setFilter(f) {
   renderCatalog();
 }
 function getSearchQuery() {
-  const a = ($('#searchInput')?.value || '').trim();
-  const b = ($('#searchInputMobile')?.value || '').trim();
-  return (a || b).toLowerCase();
+  return ($('#searchInput')?.value || '').trim().toLowerCase();
 }
 
 function renderCatalog() {
@@ -453,12 +453,6 @@ function initHome() {
   });
   const search = $('#searchInput');
   if (search) search.addEventListener('input', () => { renderCatalog(); renderShops(); });
-  const searchM = $('#searchInputMobile');
-  if (searchM) searchM.addEventListener('input', () => {
-    if (search) search.value = searchM.value;
-    renderCatalog();
-    renderShops();
-  });
   ['filterMinPrice','filterMaxPrice'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
