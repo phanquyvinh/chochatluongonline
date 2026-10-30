@@ -102,6 +102,8 @@
             <div class="form-field"><label>Hoa hồng sàn (%)</label><input type="number" id="cfg_fee" min="0" max="30" step="0.1"></div>
             <div class="form-field"><label>Thuế DN (%)</label><input type="number" id="cfg_tax" min="0" max="50" step="0.5"></div>
             <div class="form-field"><label>Ship mặc định (đ)</label><input type="text" id="cfg_ship" inputmode="numeric" placeholder="0" autocomplete="off"></div>
+            <div class="form-field"><label>Phí tháng shipper (đ)</label><input type="text" id="cfg_shipper_monthly" inputmode="numeric" placeholder="150000" autocomplete="off"></div>
+            <div class="form-field"><label>Thế chấp ship gợi ý (đ)</label><input type="text" id="cfg_shipper_deposit" inputmode="numeric" placeholder="500000" autocomplete="off"></div>
             <div class="form-field"><label>Ngày giữ escrow</label><input type="number" id="cfg_escrow" min="0" max="30"></div>
             <div class="form-field"><label>Ngày cửa sổ hoàn</label><input type="number" id="cfg_return" min="0" max="30"></div>
           </div>
@@ -132,6 +134,45 @@
                 </tr>
               </thead>
               <tbody id="shopFeeBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Shipper (phí tháng · HĐ sàn · thế chấp)</h2>
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">
+            Phí tháng đăng ký sàn <strong>khác</strong> thế chấp hàng. Ship HĐ/thế chấp với sàn nhận đơn trực tiếp; ship ngoài cần thế chấp 100% giá hàng + shop duyệt.
+          </p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Shipper</th>
+                  <th>Phí tháng</th>
+                  <th>HĐ/Sàn</th>
+                  <th>Thế chấp</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="shipperAdminBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Đơn hàng gần đây</h2>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Mã</th>
+                  <th>Khách</th>
+                  <th>Trạng thái</th>
+                  <th>Thanh toán</th>
+                  <th>Tổng</th>
+                </tr>
+              </thead>
+              <tbody id="ordersAdminBody"></tbody>
             </table>
           </div>
         </div>
@@ -226,37 +267,62 @@
   <script src="js/app.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const s = requireAuth(['admin']);
-      if (!s) return;
-      document.getElementById('adminName').textContent = s.name || s.email;
-      window.__adminSession = s;
-      setTimeout(function(){ if (typeof applyWsBanner==='function') applyWsBanner(); }, 0);
-      const c = CCLConfig.loadPlatformConfig();
-      document.getElementById('cfg_fee').value = c.platformFeeRate * 100;
-      document.getElementById('cfg_tax').value = c.corporateTaxRate * 100;
-      const feeModelEl = document.getElementById('cfg_feeModel');
-      if (feeModelEl) feeModelEl.value = c.defaultFeeModel || 'monthly';
-      const monthlyEl = document.getElementById('cfg_monthly');
-      if (monthlyEl) {
-        monthlyEl.value = formatPriceTyping(String(c.defaultMonthlyFee || 200000));
-        bindPriceInput(monthlyEl);
+      try {
+        if (typeof requireAuth !== 'function' || !window.CCLStore || !window.CCLConfig) {
+          console.error('Admin deps missing', { requireAuth: typeof requireAuth, CCLStore: !!window.CCLStore, CCLConfig: !!window.CCLConfig });
+          alert('Thiếu thư viện (store/config/app). Hard refresh hoặc deploy lại đủ file js/.');
+          return;
+        }
+        const s = requireAuth(['admin']);
+        if (!s) return;
+        const nameEl = document.getElementById('adminName');
+        if (nameEl) nameEl.textContent = s.name || s.email;
+        window.__adminSession = s;
+        setTimeout(function(){ if (typeof applyWsBanner==='function') applyWsBanner(); }, 0);
+        const c = CCLConfig.loadPlatformConfig();
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setVal('cfg_fee', (c.platformFeeRate || 0) * 100);
+        setVal('cfg_tax', (c.corporateTaxRate || 0) * 100);
+        setVal('cfg_feeModel', c.defaultFeeModel || 'monthly');
+        const monthlyEl = document.getElementById('cfg_monthly');
+        if (monthlyEl) {
+          monthlyEl.value = formatPriceTyping(String(c.defaultMonthlyFee || 200000));
+          if (typeof bindPriceInput === 'function') bindPriceInput(monthlyEl);
+        }
+        const shipEl = document.getElementById('cfg_ship');
+        if (shipEl) {
+          shipEl.value = formatPriceTyping(String(c.defaultShipFeePerShop || 0));
+          if (typeof bindPriceInput === 'function') bindPriceInput(shipEl);
+        }
+        const sm = document.getElementById('cfg_shipper_monthly');
+        if (sm) {
+          sm.value = formatPriceTyping(String(c.defaultShipperMonthlyFee || 150000));
+          if (typeof bindPriceInput === 'function') bindPriceInput(sm);
+        }
+        const sd = document.getElementById('cfg_shipper_deposit');
+        if (sd) {
+          sd.value = formatPriceTyping(String(c.defaultShipperDeposit || 500000));
+          if (typeof bindPriceInput === 'function') bindPriceInput(sd);
+        }
+        setVal('cfg_escrow', c.escrowHoldDays || 0);
+        setVal('cfg_return', c.returnWindowDays || 3);
+        const selfShipEl = document.getElementById('cfg_selfShip');
+        if (selfShipEl) selfShipEl.checked = c.allowShopSelfShip !== false;
+        const reqPhotoEl = document.getElementById('cfg_requirePhoto');
+        if (reqPhotoEl) reqPhotoEl.checked = c.requireDeliveryPhoto !== false;
+        refreshStats();
+        loadHeroForm();
+        renderReturns();
+        renderBlocks();
+        renderUsers();
+        renderAdminProducts();
+        renderShopFees();
+        renderShippersAdmin();
+        renderOrdersAdmin();
+      } catch (err) {
+        console.error('Admin init error', err);
+        alert('Lỗi khởi tạo admin: ' + (err && err.message ? err.message : err));
       }
-      const shipEl = document.getElementById('cfg_ship');
-      shipEl.value = formatPriceTyping(String(c.defaultShipFeePerShop || 0));
-      bindPriceInput(shipEl);
-      document.getElementById('cfg_escrow').value = c.escrowHoldDays;
-      document.getElementById('cfg_return').value = c.returnWindowDays || 3;
-      const selfShipEl = document.getElementById('cfg_selfShip');
-      if (selfShipEl) selfShipEl.checked = c.allowShopSelfShip !== false;
-      const reqPhotoEl = document.getElementById('cfg_requirePhoto');
-      if (reqPhotoEl) reqPhotoEl.checked = c.requireDeliveryPhoto !== false;
-      refreshStats();
-      loadHeroForm();
-      renderReturns();
-      renderBlocks();
-      renderUsers();
-      renderAdminProducts();
-      renderShopFees();
     });
 
 
@@ -374,13 +440,20 @@
 
     function refreshStats() {
       const c = CCLConfig.loadPlatformConfig();
-      const gmv = 85000000;
-      const rev = Math.round(gmv * c.platformFeeRate);
-      const tax = Math.round(rev * c.corporateTaxRate);
-      document.getElementById('grossSales').textContent = formatVND(gmv);
-      document.getElementById('platformRev').textContent = formatVND(rev);
-      document.getElementById('stateTax').textContent = formatVND(tax);
-      document.getElementById('netProfit').textContent = formatVND(rev - tax);
+      const orders = (CCLStore.getOrders && CCLStore.getOrders()) || [];
+      let gmv = 0;
+      orders.forEach((o) => {
+        if (o.status === 'cancelled') return;
+        gmv += Number(o.total) || Number(o.subtotal) || 0;
+      });
+      // Ước phí sàn: theo hoa hồng cấu hình (giai đoạn phí tháng sẽ khác)
+      const rev = Math.round(gmv * (c.platformFeeRate || 0));
+      const tax = Math.round(rev * (c.corporateTaxRate || 0));
+      const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setTxt('grossSales', formatVND(gmv));
+      setTxt('platformRev', formatVND(rev));
+      setTxt('stateTax', formatVND(tax));
+      setTxt('netProfit', formatVND(rev - tax));
     }
 
     function applyWsBanner() {
@@ -428,15 +501,18 @@
         defaultMonthlyFee: parseVNDInput(document.getElementById('cfg_monthly')?.value),
         platformFeeRate: Number(document.getElementById('cfg_fee').value) / 100,
         corporateTaxRate: Number(document.getElementById('cfg_tax').value) / 100,
-        defaultShipFeePerShop: parseVNDInput(document.getElementById('cfg_ship').value),
-        escrowHoldDays: document.getElementById('cfg_escrow').value,
-        returnWindowDays: document.getElementById('cfg_return').value,
+        defaultShipFeePerShop: parseVNDInput(document.getElementById('cfg_ship')?.value),
+        defaultShipperMonthlyFee: parseVNDInput(document.getElementById('cfg_shipper_monthly')?.value),
+        defaultShipperDeposit: parseVNDInput(document.getElementById('cfg_shipper_deposit')?.value),
+        escrowHoldDays: document.getElementById('cfg_escrow')?.value,
+        returnWindowDays: document.getElementById('cfg_return')?.value,
         allowShopSelfShip: !!document.getElementById('cfg_selfShip')?.checked,
         requireDeliveryPhoto: !!document.getElementById('cfg_requirePhoto')?.checked,
-      }, getSession()?.name || 'admin');
+      }, (getSession() && getSession().name) || 'admin');
       toast('Đã lưu cấu hình', 'success');
       refreshStats();
       renderShopFees();
+      renderShippersAdmin();
     }
 
     function renderShopFees() {
@@ -537,20 +613,78 @@
     }
 
     function renderReturns() {
-      const orders = CCLStore.getOrders().filter((o) => o.status === 'return_requested' || o.status === 'returned');
       const body = document.getElementById('returnsBody');
-      if (!orders.length) {
+      if (!body) return;
+      const fromOrders = (CCLStore.getOrders() || []).filter((o) => o.status === 'return_requested' || o.status === 'returned');
+      const fromLog = (CCLStore.getReturns && CCLStore.getReturns()) || [];
+      const rows = [];
+      fromOrders.forEach((o) => {
+        rows.push({ id: o.id, email: o.buyerEmail || '', reason: o.returnReason || '', status: o.status });
+      });
+      fromLog.forEach((r) => {
+        if (rows.some((x) => x.id === r.orderId)) return;
+        rows.push({ id: r.orderId || r.id, email: r.email || '', reason: r.reason || '', status: r.status || 'return_requested' });
+      });
+      if (!rows.length) {
         body.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);text-align:center">Không có</td></tr>';
         return;
       }
-      body.innerHTML = orders.map((o) => `
-        <tr>
-          <td>${o.id}</td>
-          <td>${o.buyerEmail || ''}</td>
-          <td>${o.returnReason || ''}</td>
-          <td>${o.status}</td>
-        </tr>
-      `).join('');
+      body.innerHTML = rows.map((o) =>
+        '<tr><td>' + (o.id || '') + '</td><td>' + (o.email || '') + '</td><td>' + (o.reason || '') + '</td><td>' + (o.status || '') + '</td></tr>'
+      ).join('');
+    }
+
+    function renderShippersAdmin() {
+      const body = document.getElementById('shipperAdminBody');
+      if (!body) return;
+      const list = (CCLStore.listShippersRanked && CCLStore.listShippersRanked()) ||
+        (CCLStore.getUsers() || []).filter((u) => u.role === 'shipper');
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center">Chưa có shipper</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map((u) => {
+        const feeOk = CCLStore.isShipperFeeActive ? CCLStore.isShipperFeeActive(u) : false;
+        const bonded = !!(u.shipContractWithPlatform || u.shipPlatformBonded);
+        const feeTxt = feeOk
+          ? ('Đến ' + new Date(u.shipFeePaidUntil).toLocaleDateString('vi-VN'))
+          : 'Chưa đóng';
+        const bal = u.shipDepositBalance || 0;
+        return '<tr>' +
+          '<td><strong>' + (u.shopName || u.name || u.email) + '</strong><br><span style="font-size:0.75rem;color:var(--text-muted)">' + u.email + '</span></td>' +
+          '<td>' + feeTxt + '</td>' +
+          '<td>' + (bonded ? '✅ Đã HĐ/sàn' : '—') + '</td>' +
+          '<td>' + formatVND(bal) + '</td>' +
+          '<td style="white-space:nowrap">' +
+            '<button class="btn btn-outline btn-sm" onclick="adminShipPayMonth(\'' + u.email + '\')">+1 tháng phí</button> ' +
+            '<button class="btn btn-outline btn-sm" onclick="adminShipBond(\'' + u.email + '\',' + (!bonded) + ')">' +
+              (bonded ? 'Gỡ HĐ sàn' : 'Gắn HĐ sàn') + '</button>' +
+          '</td></tr>';
+      }).join('');
+    }
+    function adminShipPayMonth(email) {
+      const res = CCLStore.markShipperMonthlyPaid(email, 1);
+      if (res.error) toast(res.error, 'error');
+      else { toast('Đã cộng 1 tháng phí shipper', 'success'); renderShippersAdmin(); }
+    }
+    function adminShipBond(email, on) {
+      const res = CCLStore.setPlatformShipperBond(email, !!on, on ? 'Admin bond' : '');
+      if (res.error) toast(res.error, 'error');
+      else { toast(on ? 'Đã gắn HĐ/thế chấp sàn' : 'Đã gỡ HĐ sàn', 'success'); renderShippersAdmin(); }
+    }
+    function renderOrdersAdmin() {
+      const body = document.getElementById('ordersAdminBody');
+      if (!body) return;
+      const list = ((CCLStore.getOrders && CCLStore.getOrders()) || []).slice(0, 30);
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center">Chưa có đơn</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map((o) => {
+        const st = (CCLStore.STATUS_LABEL && CCLStore.STATUS_LABEL[o.status]) || o.status || '';
+        return '<tr><td>' + (o.id || '') + '</td><td>' + (o.buyerEmail || '') + '</td><td>' + st +
+          '</td><td>' + (o.paymentStatus || '') + '</td><td>' + formatVND(o.total || o.subtotal || 0) + '</td></tr>';
+      }).join('');
     }
 
     function doBlock() {
