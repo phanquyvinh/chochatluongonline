@@ -1104,6 +1104,10 @@ function resolveCancelRequest(orderId, approve, resolverEmail, note) {
 }
 
 /** Legacy return (escrow) — keep compatible */
+function getReturns() {
+  return read(K.returns, []);
+}
+
 function requestReturn(orderId, reason, userEmail) {
   const orders = getOrders();
   const order = orders.find((o) => o.id === orderId);
@@ -1502,6 +1506,8 @@ window.CCLStore = {
   setShipperDeposit,
   markShipperMonthlyPaid,
   isShipperFeeActive,
+  packageGoodsValue, isPlatformBondedShipper, setPlatformShipperBond, releasePackageDepositHold,
+  getReturns,
   // Chat
   getChats, getChatThread, getOrCreateChatThread, postChatMessage,
   listChatsForUser, openOrderChat, canAccessChat, scrubChatText,
