@@ -182,6 +182,7 @@
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
             <button class="btn btn-outline btn-sm" type="button" onclick="renderAdminProducts()">Làm mới</button>
             <button class="btn btn-outline btn-sm" type="button" style="color:var(--danger);border-color:var(--danger)" onclick="clearAllDemoProducts()">Xóa toàn bộ sản phẩm demo</button>
+            <button class="btn btn-outline btn-sm" type="button" style="color:var(--danger);border-color:var(--danger)" onclick="clearAllDemoShops()">Xóa shop & SP demo</button>
           </div>
           <div class="table-wrap">
             <table class="data-table">
@@ -605,10 +606,20 @@
     }
 
     function clearAllDemoProducts() {
-      if (!confirm('Xóa toàn bộ sản phẩm demo?')) return;
+      if (!confirm('Xóa toàn bộ sản phẩm demo? (sẽ không tự seed lại)')) return;
       const n = CCLStore.clearDemoProducts ? CCLStore.clearDemoProducts() : 0;
       toast(n > 0 ? ('Đã xóa ' + n + ' sản phẩm demo') : 'Không còn sản phẩm demo', 'success');
       renderAdminProducts();
+      renderShopFees();
+      refreshStats();
+    }
+    function clearAllDemoShops() {
+      if (!confirm('Xóa shop demo + toàn bộ sản phẩm demo? Thao tác không seed lại demo.')) return;
+      const res = CCLStore.clearDemoShops ? CCLStore.clearDemoShops() : { usersRemoved: 0, productsRemoved: 0 };
+      toast('Đã xóa ' + (res.usersRemoved || 0) + ' shop/user demo, ' + (res.productsRemoved || 0) + ' SP', 'success');
+      renderAdminProducts();
+      renderUsers();
+      renderShopFees();
       refreshStats();
     }
 
