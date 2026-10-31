@@ -158,22 +158,26 @@ const CATALOG_CATEGORIES = [
 
 function ensureProducts() {
   let list = read(K.products, null);
+  const demoCleared = !!read('ccl_demo_cleared_v1', false);
   if (!list || !list.length) {
-    list = SEED_PRODUCTS.slice();
+    // Nếu admin đã xóa demo: không seed lại hàng demo
+    list = demoCleared ? [] : SEED_PRODUCTS.slice();
     write(K.products, list);
     return list;
   }
-  // Merge seed mới (ăn uống, ship tư vấn) nếu chưa có theo id
-  const ids = new Set(list.map((p) => p.id));
-  let added = false;
-  SEED_PRODUCTS.forEach((seed) => {
-    if (!ids.has(seed.id)) {
-      list.push(seed);
-      ids.add(seed.id);
-      added = true;
-    }
-  });
-  if (added) write(K.products, list);
+  // Chỉ merge seed mới khi chưa từng xóa demo (tránh demo "mọc lại")
+  if (!demoCleared) {
+    const ids = new Set(list.map((p) => p.id));
+    let added = false;
+    SEED_PRODUCTS.forEach((seed) => {
+      if (!ids.has(seed.id)) {
+        list.push(seed);
+        ids.add(seed.id);
+        added = true;
+      }
+    });
+    if (added) write(K.products, list);
+  }
   return list;
 }
 
@@ -251,13 +255,16 @@ function getAllProductsAdmin() {
 }
 
 function clearDemoProducts() {
-  const demoShopIds = new Set(['s101', 's102', 's103']);
+  const demoShopIds = new Set(['s101', 's102', 's103', 's201', 's202', 's301']);
   const demoEmails = new Set([
     'shop.dientu@example.com',
     'shop.dienlanh@example.com',
     'shop.kts@example.com',
+    'shop.bepnha@example.com',
+    'shop.phogio@example.com',
+    'ship.tuvan@example.com',
   ]);
-  let list = ensureProducts();
+  let list = read(K.products, []) || [];
   const before = list.length;
   list = list.filter((p) => {
     if (p.isDemo) return false;
@@ -266,7 +273,43 @@ function clearDemoProducts() {
     return true;
   });
   write(K.products, list);
+  // Đánh dấu đã xóa demo — ensureProducts sẽ không seed/merge lại
+  write('ccl_demo_cleared_v1', true);
   return before - list.length;
+}
+
+/** Xóa user/shop demo + sản phẩm gắn với shop demo */
+function clearDemoShops() {
+  const demoEmails = new Set([
+    'shop.dientu@example.com',
+    'shop.dienlanh@example.com',
+    'shop.kts@example.com',
+    'shop.bepnha@example.com',
+    'shop.phogio@example.com',
+    'ship.tuvan@example.com',
+  ]);
+  const demoShopIds = new Set(['s101', 's102', 's103', 's201', 's202', 's301']);
+  let users = getUsers();
+  const beforeU = users.length;
+  users = users.filter((u) => {
+    if (u.email && demoEmails.has(String(u.email).toLowerCase())) return false;
+    if (u.shopId && demoShopIds.has(u.shopId) && u.role === 'seller') return false;
+    return true;
+  });
+  saveUsers(users);
+  const nProd = clearDemoProducts();
+  // shop settings
+  try {
+    if (window.CCLConfig && CCLConfig.loadAllShopSettings) {
+      const all = CCLConfig.loadAllShopSettings() || {};
+      demoShopIds.forEach((id) => { try { delete all[id]; } catch (_) {} });
+      // write back if API exists
+      if (CCLConfig.saveAllShopSettings) CCLConfig.saveAllShopSettings(all);
+      else localStorage.setItem('ccl_shop_settings_v1', JSON.stringify(all));
+    }
+  } catch (_) {}
+  write('ccl_demo_cleared_v1', true);
+  return { usersRemoved: beforeU - users.length, productsRemoved: nProd };
 }
 
 function adminDeleteProduct(id) {
@@ -1486,7 +1529,7 @@ function listShippersRanked() {
 
 window.CCLStore = {
   K, uid, CATALOG_CATEGORIES, ensureProducts, getProducts, getProductById, getProductsByShop,
-  saveProduct, deleteProduct, hardDeleteProduct, getAllProductsAdmin, clearDemoProducts, adminDeleteProduct,
+  saveProduct, deleteProduct, hardDeleteProduct, getAllProductsAdmin, clearDemoProducts, clearDemoShops, adminDeleteProduct,
   getUsers, findUserByEmail, findUserByPhone, findUserByLogin, normalizePhone, createUser, updateUser,
   setOtp, verifyOtp,
   getSession, setSession, clearSession,
